@@ -31,8 +31,8 @@ export const auth = betterAuth({
 				checkout({
 					products: [
 						{
-							productId: "your-product-id",
-							slug: "pro",
+							productId: "dee654e3-c781-4d30-8cc1-4d318b96c56e",
+							slug: "Starter-Monthly",
 						},
 					],
 					successUrl: process.env.POLAR_SUCCESS_URL,

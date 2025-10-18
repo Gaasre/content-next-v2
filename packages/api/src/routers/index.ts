@@ -1,5 +1,7 @@
 import { protectedProcedure, publicProcedure } from "../index";
 import type { RouterClient } from "@orpc/server";
+import { websiteRouter } from "./website";
+import { articleRouter } from "./article";
 
 export const appRouter = {
 	healthCheck: publicProcedure.handler(() => {
@@ -11,6 +13,8 @@ export const appRouter = {
 			user: context.session?.user,
 		};
 	}),
+	website: websiteRouter,
+	article: articleRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;
