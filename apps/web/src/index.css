@@ -193,8 +193,13 @@
 
 /* Make editor blend with card background */
 .ProseMirror {
-  background: transparent;
+  background: color-mix(in oklab, var(--muted) 30%, transparent);;
   color: oklch(var(--foreground));
+  @apply px-3 py-2 rounded-md transition-colors;
+}
+
+[aria-invalid="true"] .ProseMirror {
+  @apply bg-destructive/10;
 }
 
 /* Ensure proper spacing and typography consistency */
