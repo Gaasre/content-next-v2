@@ -154,6 +154,7 @@
       "dependencies": {
         "dotenv": "catalog:",
         "drizzle-orm": "^0.44.2",
+        "nanoid": "^3.3.11",
         "pg": "^8.14.1",
         "zod": "catalog:",
       },

@@ -1,8 +1,7 @@
 import { protectedProcedure, apiKeyProcedure } from "../index";
-import { db, article, website } from "@content-next-v2/db";
+import { db, article, website, generateId } from "@content-next-v2/db";
 import { z } from "zod";
-import { eq, and, isNull, or, ilike, desc } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { eq, and, isNull, or, ilike, desc } from "@content-next-v2/db";
 import { ORPCError } from "@orpc/server";
 
 const createArticleSchema = z.object({
@@ -83,7 +82,7 @@ export const articleRouter = {
 				throw new ORPCError("NOT_FOUND");
 			}
 
-			const id = nanoid();
+			const id = generateId();
 			const readTime = calculateReadTime(input.content);
 
 			const [newArticle] = await db.insert(article).values({

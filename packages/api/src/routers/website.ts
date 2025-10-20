@@ -1,8 +1,7 @@
 import { protectedProcedure } from "../index";
-import { db, website } from "@content-next-v2/db";
+import { db, website, generateId, generateApiKey } from "@content-next-v2/db";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { eq, and } from "@content-next-v2/db";
 import { ORPCError } from "@orpc/server";
 
 const createWebsiteSchema = z.object({
@@ -33,8 +32,8 @@ export const websiteRouter = {
 		.input(createWebsiteSchema)
 		.handler(async ({ context, input }) => {
 			const userId = context.session.user.id;
-			const id = nanoid();
-			const apiKey = `cn_${nanoid(32)}`;
+			const id = generateId();
+			const apiKey = generateApiKey();
 
 			const [newWebsite] = await db.insert(website).values({
 				id,
@@ -114,7 +113,7 @@ export const websiteRouter = {
 		.input(regenerateApiKeySchema)
 		.handler(async ({ context, input }) => {
 			const userId = context.session.user.id;
-			const newApiKey = `cn_${nanoid(32)}`;
+			const newApiKey = generateApiKey();
 
 			const [updated] = await db
 				.update(website)

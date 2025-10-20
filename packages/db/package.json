@@ -30,6 +30,7 @@
     "drizzle-orm": "^0.44.2",
     "pg": "^8.14.1",
     "dotenv": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "nanoid": "^3.3.11"
   }
 }
