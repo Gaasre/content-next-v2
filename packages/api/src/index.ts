@@ -8,36 +8,43 @@ export const o = os.$context<Context>();
 export const publicProcedure = o;
 
 const requireAuth = o.middleware(async ({ context, next }) => {
-	if (!context.session?.user) {
-		throw new ORPCError("UNAUTHORIZED");
-	}
-	return next({
-		context: {
-			session: context.session,
-		},
-	});
+  if (!context.session?.user) {
+    throw new ORPCError("UNAUTHORIZED");
+  }
+  return next({
+    context: {
+      session: context.session,
+    },
+  });
 });
 
-export const protectedProcedure = publicProcedure.use(requireAuth);
+export const protectedProcedure = publicProcedure.use(requireAuth).errors({
+  NOT_FOUND: {},
+  CONFLICT: {},
+  INTERNAL_SERVER_ERROR: {},
+});
 
 const requireApiKey = o.middleware(async ({ context, next }) => {
-	const apiKey = context.headers?.get("x-api-key");
-	
-	if (!apiKey) {
-		throw new ORPCError("UNAUTHORIZED");
-	}
+  const apiKey = context.headers?.get("x-api-key");
 
-	const [site] = await db.select().from(website).where(eq(website.apiKey, apiKey));
+  if (!apiKey) {
+    throw new ORPCError("UNAUTHORIZED");
+  }
 
-	if (!site) {
-		throw new ORPCError("UNAUTHORIZED");
-	}
+  const [site] = await db
+    .select()
+    .from(website)
+    .where(eq(website.apiKey, apiKey));
 
-	return next({
-		context: {
-			websiteId: site.id,
-		},
-	});
+  if (!site) {
+    throw new ORPCError("UNAUTHORIZED");
+  }
+
+  return next({
+    context: {
+      websiteId: site.id,
+    },
+  });
 });
 
 export const apiKeyProcedure = publicProcedure.use(requireApiKey);
