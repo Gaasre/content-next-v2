@@ -5,8 +5,11 @@ import { Eye, Clock, TrendingUp, Award, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { TrendSparkline } from "@/components/ui/trend-sparkline";
 import { ArticleDetailedStats } from "./article-detailed-stats";
 import { EditArticleForm } from "../forms/edit-article-form";
+import { orpc } from "@/utils/orpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface Article {
   id: string;
@@ -23,69 +26,10 @@ interface Article {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
-  views?: number; // Optional for now
-  completionRate?: number; // Optional for now
 }
 
 interface TimelineItemProps {
   article: Article;
-}
-
-// Mini sparkline component
-function MiniSparkline({
-  views,
-  seed,
-  color,
-}: {
-  views: number;
-  seed: string;
-  color?: string;
-}) {
-  // Deterministic pseudo-random generator based on seed
-  const seededRandom = (index: number) => {
-    const x = Math.sin(seed.charCodeAt(0) * index + views) * 10000;
-    return x - Math.floor(x);
-  };
-
-  // Generate consistent trend data (7 points)
-  const points = Array.from({ length: 7 }, (_, i) => {
-    const variance = seededRandom(i) * 0.4 + 0.8; // 0.8 to 1.2
-    return Math.floor(views / 30) * variance * (1 + i * 0.1);
-  });
-
-  const max = Math.max(...points);
-  const normalized = points.map((p) => (p / max) * 100);
-
-  // Create SVG path
-  const width = 40;
-  const height = 16;
-  const step = width / (points.length - 1);
-
-  const pathData = normalized
-    .map((point, i) => {
-      const x = i * step;
-      const y = height - (point / 100) * height;
-      return `${i === 0 ? "M" : "L"} ${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <svg
-      width={width}
-      height={height}
-      className={cn("opacity-60 transition-colors", color)}
-      viewBox={`0 0 ${width} ${height}`}
-    >
-      <path
-        d={pathData}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 export function TimelineItem({ article }: TimelineItemProps) {
@@ -96,19 +40,43 @@ export function TimelineItem({ article }: TimelineItemProps) {
   const isDeactivated = article.status === "draft";
   const leftoutTags = article.tags.length > 0 ? article.tags.length - 2 : null;
 
+  // Fetch article stats when expanded (lazy load)
+  const { data: articleStats, isLoading: isStatsLoading } = useQuery({
+    ...orpc.analytics.getArticleStats.queryOptions({
+      input: {
+        articleId: article.id,
+        timeRange: "7d",
+      },
+    }),
+    enabled: isExpanded && !isScheduled,
+  });
+
+  // Calculate stats from API data
+  const totalViews =
+    articleStats?.stats?.reduce(
+      (sum, stat) => sum + (stat.totalViews || 0),
+      0
+    ) || 0;
+  const avgCompletionRate = articleStats?.stats?.length
+    ? articleStats.stats.reduce(
+        (sum, stat) => sum + (stat.avgCompletionRate || 0),
+        0
+      ) / articleStats.stats.length
+    : 0;
+  const viewsTrend = articleStats?.stats?.map(
+    (stat) => stat.totalViews || 0
+  ) || [0, 0, 0, 0, 0, 0, 0];
+
   // Determine if article is trending (high views and completion)
   const isTrending =
     !isScheduled &&
     !isDeactivated &&
-    (article.views ?? 0) > 15000 &&
-    (article.completionRate ?? 0) > 85;
+    totalViews > 15000 &&
+    avgCompletionRate > 85;
 
   // Determine if article is high performer (excellent completion rate)
   const isHighPerformer =
-    !isScheduled &&
-    !isDeactivated &&
-    !isTrending &&
-    (article.completionRate ?? 0) >= 90;
+    !isScheduled && !isDeactivated && !isTrending && avgCompletionRate >= 90;
 
   // Smooth scroll to center on expand
   useEffect(() => {
@@ -258,23 +226,26 @@ export function TimelineItem({ article }: TimelineItemProps) {
                         : "text-muted-foreground"
                     )}
                   />
-                  <span
-                    className={cn(
-                      "text-xs font-medium transition-colors",
-                      isTrending && "text-orange-600 dark:text-orange-400"
-                    )}
-                  >
-                    {(article.views ?? 0).toLocaleString()}
-                  </span>
-                  <MiniSparkline
-                    views={article.views ?? 0}
-                    seed={article.id}
-                    color={
-                      isTrending
-                        ? "text-orange-600 dark:text-orange-400"
-                        : undefined
-                    }
-                  />
+                  {isStatsLoading ? (
+                    <div className="h-3 w-8 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <span
+                      className={cn(
+                        "text-xs font-medium transition-colors",
+                        isTrending && "text-orange-600 dark:text-orange-400"
+                      )}
+                    >
+                      {totalViews.toLocaleString()}
+                    </span>
+                  )}
+                  {isStatsLoading ? (
+                    <div className="h-4 w-10 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <TrendSparkline
+                      data={viewsTrend}
+                      color={isTrending ? "hsl(var(--orange))" : "currentColor"}
+                    />
+                  )}
                   {isTrending && (
                     <div className="flex items-center gap-0.5 animate-in fade-in slide-in-from-right-1 duration-300">
                       <span className="text-[9px] font-bold">🔥</span>
@@ -300,15 +271,19 @@ export function TimelineItem({ article }: TimelineItemProps) {
                           : "text-muted-foreground"
                       )}
                     />
-                    <span
-                      className={cn(
-                        "transition-colors",
-                        isHighPerformer &&
-                          "text-emerald-700 dark:text-emerald-300 font-medium"
-                      )}
-                    >
-                      {article.completionRate ?? 0}%
-                    </span>
+                    {isStatsLoading ? (
+                      <div className="h-3 w-6 bg-muted animate-pulse rounded" />
+                    ) : (
+                      <span
+                        className={cn(
+                          "transition-colors",
+                          isHighPerformer &&
+                            "text-emerald-700 dark:text-emerald-300 font-medium"
+                        )}
+                      >
+                        {Math.round(avgCompletionRate)}%
+                      </span>
+                    )}
                     {isHighPerformer && (
                       <div className="flex items-center gap-0.5 animate-in fade-in slide-in-from-left-1 duration-300">
                         <Award className="size-2.5 text-emerald-700 dark:text-emerald-300" />
@@ -350,11 +325,7 @@ export function TimelineItem({ article }: TimelineItemProps) {
 
             {/* Detailed Stats - only show for published articles */}
             {!isScheduled ? (
-              <ArticleDetailedStats
-                views={article.views ?? 0}
-                readTime={article.readTime}
-                completionRate={article.completionRate ?? 0}
-              />
+              <ArticleDetailedStats articleId={article.id} />
             ) : (
               <div className="px-4 pb-4 pt-4 border-t text-center">
                 <p className="text-sm text-muted-foreground">
