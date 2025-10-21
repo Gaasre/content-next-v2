@@ -1,7 +1,22 @@
 import { protectedProcedure, apiKeyProcedure } from "../index";
-import { db, article, website, generateId } from "@content-next-v2/db";
+
 import { z } from "zod";
-import { eq, and, isNull, or, ilike, desc, not } from "@content-next-v2/db";
+import {
+  eq,
+  and,
+  isNull,
+  or,
+  ilike,
+  desc,
+  not,
+  count,
+  db,
+  article,
+  website,
+  generateId,
+  articleStatsDaily,
+  sql,
+} from "@content-next-v2/db";
 import { ORPCError } from "@orpc/server";
 
 const createArticleSchema = z.object({
@@ -147,17 +162,15 @@ export const articleRouter = {
 
       const offset = (input.page - 1) * input.limit;
 
-      const conditions = [
+      // Base conditions for all queries
+      const baseConditions = [
         eq(article.websiteId, input.websiteId),
         isNull(article.deletedAt),
       ];
 
-      if (input.status) {
-        conditions.push(eq(article.status, input.status));
-      }
-
+      // Add search condition if provided
       if (input.search) {
-        conditions.push(
+        baseConditions.push(
           or(
             ilike(article.title, `%${input.search}%`),
             ilike(article.description, `%${input.search}%`)
@@ -165,18 +178,102 @@ export const articleRouter = {
         );
       }
 
-      const articles = await db
-        .select()
-        .from(article)
-        .where(and(...conditions))
-        .orderBy(desc(article.createdAt))
-        .limit(input.limit)
-        .offset(offset);
+      // Conditions for the main articles query
+      const articleConditions = [...baseConditions];
+      if (input.status) {
+        articleConditions.push(eq(article.status, input.status));
+      }
+
+      // Get articles and counts in parallel
+      const [
+        articles,
+        allCount,
+        publishedCount,
+        scheduledCount,
+        draftCount,
+        trendingCount,
+        highlyRatedCount,
+      ] = await Promise.all([
+        db
+          .select()
+          .from(article)
+          .where(and(...articleConditions))
+          .orderBy(desc(article.createdAt))
+          .limit(input.limit)
+          .offset(offset),
+
+        // Total count (all articles matching base conditions)
+        db
+          .select({ count: count() })
+          .from(article)
+          .where(and(...baseConditions)),
+
+        // Published count
+        db
+          .select({ count: count() })
+          .from(article)
+          .where(and(...baseConditions, eq(article.status, "published"))),
+
+        // Scheduled count
+        db
+          .select({ count: count() })
+          .from(article)
+          .where(and(...baseConditions, eq(article.status, "scheduled"))),
+
+        // Draft count
+        db
+          .select({ count: count() })
+          .from(article)
+          .where(and(...baseConditions, eq(article.status, "draft"))),
+
+        // Trending count: published articles with totalViews > 15000 AND avgCompletionRate > 85
+        db
+          .select({ count: count() })
+          .from(article)
+          .innerJoin(
+            articleStatsDaily,
+            eq(article.id, articleStatsDaily.articleId)
+          )
+          .where(
+            and(
+              ...baseConditions,
+              eq(article.status, "published"),
+              sql`${articleStatsDaily.totalViews} > 15000`,
+              sql`${articleStatsDaily.avgCompletionRate} > 85`
+            )
+          ),
+
+        // Highly-rated count: published articles with avgCompletionRate >= 90 (excluding trending)
+        db
+          .select({ count: count() })
+          .from(article)
+          .innerJoin(
+            articleStatsDaily,
+            eq(article.id, articleStatsDaily.articleId)
+          )
+          .where(
+            and(
+              ...baseConditions,
+              eq(article.status, "published"),
+              sql`${articleStatsDaily.avgCompletionRate} >= 90`,
+              // Exclude articles that are already trending
+              sql`NOT (${articleStatsDaily.totalViews} > 15000 AND ${articleStatsDaily.avgCompletionRate} > 85)`
+            )
+          ),
+      ]);
 
       return {
         articles,
         page: input.page,
         limit: input.limit,
+        counts: {
+          all: allCount[0]?.count || 0,
+          published: publishedCount[0]?.count || 0,
+          scheduled: scheduledCount[0]?.count || 0,
+          draft: draftCount[0]?.count || 0,
+          trending: trendingCount[0]?.count || 0,
+          highlyRated: highlyRatedCount[0]?.count || 0,
+        },
       };
     }),
 

@@ -23,6 +23,8 @@ export {
   desc,
   asc,
   not,
+  count,
+  sql,
 } from "drizzle-orm";
 
 // Re-export ID generation utilities

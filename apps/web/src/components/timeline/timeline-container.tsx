@@ -1,21 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import {
-  Search,
-  TrendingUp,
-  Award,
-  X,
-  FileText,
-  Clock,
-  XCircle,
-  Layers,
-  Eye,
-} from "lucide-react";
 import { TimelineItem } from "./timeline-item";
 import { TimelineDateMarker } from "./timeline-date-marker";
 import { NewArticleComposer } from "./new-article-composer";
-import { cn } from "@/lib/utils";
+import { TimelineFilters } from "./timeline-filters";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
 import { useWebsite } from "@/contexts/website-context";
@@ -114,200 +103,34 @@ export function TimelineContainer() {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const publishedCount = articles.filter(
-    (a) => a.status === "published"
-  ).length;
-  const scheduledCount = articles.filter(
-    (a) => a.status === "scheduled"
-  ).length;
-  const deactivatedCount = articles.filter((a) => a.status === "draft").length;
-  // Trending and highly-rated counts disabled until analytics are implemented
-  const trendingCount = 0;
-  const highlyRatedCount = 0;
+  // Get counts from API response (first page contains the counts)
+  const apiCounts = data?.pages?.[0]?.counts;
+  const publishedCount = apiCounts?.published || 0;
+  const scheduledCount = apiCounts?.scheduled || 0;
+  const deactivatedCount = apiCounts?.draft || 0;
+  const allCount = apiCounts?.all || 0;
+  const trendingCount = apiCounts?.trending || 0;
+  const highlyRatedCount = apiCounts?.highlyRated || 0;
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center py-12 px-4">
-      {/* Filter Bar - Two Rows, Left Aligned */}
-      <div className="w-full max-w-[900px] mb-10 animate-in fade-in-50 duration-500 space-y-3">
-        {/* Row 1: Status Filters */}
-        <div className="flex items-center gap-1.5 flex-wrap pl-[160px]">
-          <button
-            type="button"
-            onClick={() => setActiveFilter("all")}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all",
-              activeFilter === "all"
-                ? "bg-foreground text-background font-medium shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <Layers className="size-3.5" />
-            <span>All</span>
-            <span
-              className={cn(
-                "ml-0.5 px-1 py-0.5 rounded text-[10px] font-medium",
-                activeFilter === "all" ? "bg-background/20" : "bg-muted"
-              )}
-            >
-              {articles.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveFilter("published")}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all",
-              activeFilter === "published"
-                ? "bg-foreground text-background font-medium shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <FileText className="size-3.5" />
-            <span>Published</span>
-            <span
-              className={cn(
-                "ml-0.5 px-1 py-0.5 rounded text-[10px] font-medium",
-                activeFilter === "published" ? "bg-background/20" : "bg-muted"
-              )}
-            >
-              {publishedCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveFilter("scheduled")}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all",
-              activeFilter === "scheduled"
-                ? "bg-foreground text-background font-medium shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <Clock className="size-3.5" />
-            <span>Scheduled</span>
-            <span
-              className={cn(
-                "ml-0.5 px-1 py-0.5 rounded text-[10px] font-medium",
-                activeFilter === "scheduled" ? "bg-background/20" : "bg-muted"
-              )}
-            >
-              {scheduledCount}
-            </span>
-          </button>
-
-          {trendingCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveFilter("trending")}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all",
-                activeFilter === "trending"
-                  ? "bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/30 text-orange-600 dark:text-orange-400 font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-orange-600 hover:bg-orange-500/10"
-              )}
-            >
-              <TrendingUp className="size-3.5" />
-              <span>Trending</span>
-              <span
-                className={cn(
-                  "ml-0.5 px-1 py-0.5 rounded text-[10px] font-medium",
-                  activeFilter === "trending" ? "bg-orange-500/20" : "bg-muted"
-                )}
-              >
-                {trendingCount}
-              </span>
-            </button>
-          )}
-
-          {highlyRatedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveFilter("highly-rated")}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all",
-                activeFilter === "highly-rated"
-                  ? "bg-gradient-to-r from-emerald-500/15 to-green-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
-              )}
-            >
-              <Award className="size-3.5" />
-              <span>Highly Rated</span>
-              <span
-                className={cn(
-                  "ml-0.5 px-1 py-0.5 rounded text-[10px] font-medium",
-                  activeFilter === "highly-rated"
-                    ? "bg-emerald-500/20"
-                    : "bg-muted"
-                )}
-              >
-                {highlyRatedCount}
-              </span>
-            </button>
-          )}
-
-          {deactivatedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveFilter("inactive")}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all",
-                activeFilter === "inactive"
-                  ? "bg-destructive/15 border border-destructive/30 text-destructive font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              )}
-            >
-              <XCircle className="size-3.5" />
-              <span>Inactive</span>
-              <span
-                className={cn(
-                  "ml-0.5 px-1 py-0.5 rounded text-[10px] font-medium",
-                  activeFilter === "inactive" ? "bg-destructive/20" : "bg-muted"
-                )}
-              >
-                {deactivatedCount}
-              </span>
-            </button>
-          )}
-        </div>
-
-        {/* Row 2: Search */}
-        <div className="flex items-center gap-3 pl-[160px]">
-          {/* Search */}
-          {isSearchExpanded ? (
-            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-muted/30">
-              <Search className="size-3.5 text-muted-foreground shrink-0" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-[180px] bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSearchExpanded(false);
-                  setSearchQuery("");
-                }}
-                className="shrink-0 p-0.5 hover:bg-muted rounded transition-colors"
-              >
-                <X className="size-3 text-muted-foreground" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsSearchExpanded(true)}
-              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
-            >
-              <Search className="size-3.5 text-muted-foreground" />
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Filter Bar */}
+      <TimelineFilters
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        isSearchExpanded={isSearchExpanded}
+        setIsSearchExpanded={setIsSearchExpanded}
+        counts={{
+          all: allCount,
+          published: publishedCount,
+          scheduled: scheduledCount,
+          draft: deactivatedCount,
+          trending: trendingCount,
+          highlyRated: highlyRatedCount,
+        }}
+      />
 
       <div className="w-full max-w-[900px] relative">
         {/* New Article Composer - Before Timeline */}
@@ -362,7 +185,7 @@ export function TimelineContainer() {
         {!isLoading && !isError && currentWebsite && (
           <div className="space-y-10">
             {filteredAndSortedArticles.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="text-center py-16 ml-36">
                 <p className="text-muted-foreground text-sm">
                   {searchQuery || activeFilter !== "all"
                     ? "No articles found matching your filters."

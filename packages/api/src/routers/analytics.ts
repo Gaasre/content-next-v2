@@ -7,10 +7,11 @@ import {
   articleViewEvents,
   articleReadEvents,
   articleStatsDaily,
+  sql,
+  eq,
+  and,
 } from "@content-next-v2/db";
 import { z } from "zod";
-import { eq, and } from "@content-next-v2/db";
-import { sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import { calculatePercentageChange } from "../utils/analytics";
 
