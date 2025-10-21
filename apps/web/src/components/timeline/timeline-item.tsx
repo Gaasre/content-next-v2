@@ -93,7 +93,8 @@ export function TimelineItem({ article }: TimelineItemProps) {
   const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const isScheduled = article.status === "scheduled";
-  const isDeactivated = article.status === "draft"; // Using draft as deactivated for now
+  const isDeactivated = article.status === "draft";
+  const leftoutTags = article.tags.length > 0 ? article.tags.length - 2 : null;
 
   // Determine if article is trending (high views and completion)
   const isTrending =
@@ -223,6 +224,14 @@ export function TimelineItem({ article }: TimelineItemProps) {
                     {tag}
                   </Badge>
                 ))}
+                {leftoutTags ? (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 h-4"
+                  >
+                    +{leftoutTags}
+                  </Badge>
+                ) : null}
               </div>
             </div>
 
