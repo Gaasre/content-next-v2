@@ -1,0 +1,29 @@
+{
+  "name": "@content-next-v2/analytics-client",
+  "version": "0.1.0",
+  "description": "Browser analytics client for ContentNext article tracking",
+  "type": "module",
+  "scripts": {
+    "build": "webpack --mode=production",
+    "build:dev": "webpack --mode=development"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1",
+    "terser-webpack-plugin": "^5.3.10",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

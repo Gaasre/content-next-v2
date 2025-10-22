@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"declaration": false,
+		"declarationMap": false,
+		"sourceMap": false,
+		"outDir": "dist",
+		"composite": false,
+		"lib": ["ES2020", "DOM", "DOM.Iterable"],
+		"types": []
+	}
+}
