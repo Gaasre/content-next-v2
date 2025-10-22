@@ -364,18 +364,3 @@ View your analytics data in the ContentNext dashboard:
 2. **Reading Patterns**: Scroll depth distribution, time spent analysis
 3. **Content Health**: Engagement scores and trends
 4. **Visitor Insights**: Unique visitors and return rates
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](../../CONTRIBUTING.md) for details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
-
-## 🆘 Support
-
-- 📖 [Documentation](https://docs.content-next.com)
-- 💬 [Discord Community](https://discord.gg/content-next)
-- 🐛 [Report Issues](https://github.com/your-org/content-next-v2/issues)
-- 💡 [Feature Requests](https://github.com/your-org/content-next-v2/discussions)
