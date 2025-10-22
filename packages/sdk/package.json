@@ -1,0 +1,24 @@
+{
+  "name": "@content-next-v2/sdk",
+  "version": "0.1.0",
+  "description": "SDK for interacting with ContentNext API",
+  "type": "module",
+  "scripts": {
+    "build": "tsdown"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "tsdown": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,7 @@
+src/
+example.ts
+tsconfig.json
+tsdown.config.ts
+*.log
+.DS_Store
+

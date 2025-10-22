@@ -475,7 +475,19 @@ export const articleRouter = {
         const offset = (input.page - 1) * input.limit;
 
         const articles = await db
-          .select()
+          .select({
+            id: article.id,
+            websiteId: article.websiteId,
+            slug: article.slug,
+            title: article.title,
+            description: article.description,
+            tags: article.tags,
+            status: article.status,
+            readTime: article.readTime,
+            publishedAt: article.publishedAt,
+            createdAt: article.createdAt,
+            updatedAt: article.updatedAt,
+          })
           .from(article)
           .where(
             and(

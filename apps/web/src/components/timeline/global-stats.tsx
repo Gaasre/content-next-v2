@@ -74,8 +74,8 @@ export function GlobalStats() {
   // Show error state
   if (error) {
     return (
-      <div className="fixed top-20 left-6 z-40">
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border bg-card/80 backdrop-blur-sm shadow-sm">
+      <div>
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md">
           <div className="text-xs text-red-500">Error loading stats</div>
         </div>
       </div>
@@ -85,13 +85,13 @@ export function GlobalStats() {
   // Minimized view - compact horizontal bar with all stats
   if (isMinimized) {
     return (
-      <div className="fixed top-20 left-6 z-40">
+      <div>
         <motion.button
           type="button"
           onClick={() => setIsMinimized(false)}
           className={cn(
             "group flex items-center gap-2 px-2 py-1.5 rounded-md transition-all duration-200",
-            "border bg-card/80 backdrop-blur-sm shadow-sm hover:bg-card"
+            "hover:bg-muted/50 w-full"
           )}
           initial={{ opacity: 0, scale: 0.9, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -209,16 +209,16 @@ export function GlobalStats() {
             )}
           </motion.div>
 
-          <ChevronDown className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors ml-1" />
+          <ChevronDown className="size-5 text-muted-foreground group-hover:text-foreground transition-colors ml-auto" />
         </motion.button>
       </div>
     );
   }
 
   return (
-    <div className="fixed top-20 left-6 z-40">
+    <div>
       <motion.div
-        className="flex flex-col rounded-lg border bg-card/80 backdrop-blur-sm shadow-sm w-[220px] overflow-hidden"
+        className="flex flex-col rounded-lg w-full overflow-hidden"
         initial={{ opacity: 0, scale: 0.95, y: -10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -10 }}

@@ -1,6 +1,5 @@
 import UserMenu from "@/components/user-menu";
-import { SiteSwitcher } from "@/components/site-switcher";
-import { GlobalStats } from "@/components/timeline/global-stats";
+import { SiteControlPanel } from "@/components/site-control-panel";
 
 export default function MainLayout({
   children,
@@ -9,13 +8,8 @@ export default function MainLayout({
 }>) {
   return (
     <div className="min-h-screen w-full">
-      {/* Fixed Site Switcher in Top Left */}
-      <div className="fixed top-6 left-6 z-50">
-        <SiteSwitcher />
-      </div>
-
-      {/* Fixed Stats Panel Below Site Switcher */}
-      <GlobalStats />
+      {/* Fixed Site Control Panel in Top Left */}
+      <SiteControlPanel />
 
       {/* Fixed User Avatar in Top Right */}
       <div className="fixed top-6 right-6 z-50">
