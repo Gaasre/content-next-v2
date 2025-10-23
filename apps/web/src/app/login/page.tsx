@@ -1,15 +1,16 @@
-"use client";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@content-next-v2/auth";
+import LoginPageContent from "@/components/login-page-content";
 
-import SignInForm from "@/components/sign-in-form";
-import SignUpForm from "@/components/sign-up-form";
-import { useState } from "react";
+export default async function LoginPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-export default function LoginPage() {
-	const [showSignIn, setShowSignIn] = useState(false);
+  if (session?.user) {
+    redirect("/dashboard");
+  }
 
-	return showSignIn ? (
-		<SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-	) : (
-		<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-	);
+  return <LoginPageContent />;
 }

@@ -8,15 +8,6 @@ export default function MainLayout({
 }>) {
   return (
     <div className="min-h-screen w-full">
-      {/* Fixed Site Control Panel in Top Left */}
-      <SiteControlPanel />
-
-      {/* Fixed User Avatar in Top Right */}
-      <div className="fixed top-6 right-6 z-50">
-        <UserMenu />
-      </div>
-
-      {/* Main Content - Fullscreen */}
       <main className="w-full">{children}</main>
     </div>
   );
