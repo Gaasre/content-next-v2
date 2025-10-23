@@ -1,6 +1,3 @@
-import UserMenu from "@/components/user-menu";
-import { SiteControlPanel } from "@/components/site-control-panel";
-
 export default function MainLayout({
   children,
 }: Readonly<{
