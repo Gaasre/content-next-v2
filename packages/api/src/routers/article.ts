@@ -18,6 +18,11 @@ import {
   sql,
 } from "@content-next-v2/db";
 import { ORPCError } from "@orpc/server";
+import {
+  scheduleArticlePublish,
+  cancelScheduledArticle,
+  rescheduleArticlePublish,
+} from "@content-next-v2/scheduler";
 
 const createArticleSchema = z.object({
   websiteId: z.string(),
@@ -198,7 +203,21 @@ export const articleRouter = {
           .select()
           .from(article)
           .where(and(...articleConditions))
-          .orderBy(desc(article.createdAt))
+          .orderBy(
+            // First: Drafts at top (0), then timeline (1)
+            sql`CASE WHEN ${article.status} = 'draft' THEN 0 ELSE 1 END`,
+            // Second: Within drafts, newest first
+            desc(
+              sql`CASE WHEN ${article.status} = 'draft' THEN ${article.createdAt} END`
+            ),
+            // Third: Timeline - scheduled and published by their dates DESC
+            desc(
+              sql`CASE 
+                WHEN ${article.status} = 'scheduled' THEN ${article.scheduledFor}
+                WHEN ${article.status} = 'published' THEN ${article.publishedAt}
+              END`
+            )
+          )
           .limit(input.limit)
           .offset(offset),
 
@@ -349,6 +368,30 @@ export const articleRouter = {
         ? calculateReadTime(input.content)
         : existing.article.readTime;
 
+      // Handle scheduler job updates
+      const oldStatus = existing.article.status;
+      const oldScheduledFor = existing.article.scheduledFor;
+      const newStatus = input.status || oldStatus;
+      const newScheduledFor =
+        input.scheduledFor !== undefined ? input.scheduledFor : oldScheduledFor;
+
+      // Cancel scheduled job if status is changing from "scheduled" to something else
+      if (oldStatus === "scheduled" && newStatus !== "scheduled") {
+        await cancelScheduledArticle(input.id);
+      }
+
+      // Handle scheduling changes
+      if (newStatus === "scheduled" && newScheduledFor) {
+        // If scheduledFor changed, reschedule the job
+        if (oldScheduledFor?.getTime() !== newScheduledFor.getTime()) {
+          await rescheduleArticlePublish(input.id, newScheduledFor);
+        }
+        // If changing to scheduled status for the first time
+        else if (oldStatus !== "scheduled") {
+          await scheduleArticlePublish(input.id, newScheduledFor);
+        }
+      }
+
       const [updated] = await db
         .update(article)
         .set({
@@ -391,6 +434,11 @@ export const articleRouter = {
         throw new ORPCError("NOT_FOUND");
       }
 
+      // Cancel scheduled job if article is scheduled
+      if (existing.article.status === "scheduled") {
+        await cancelScheduledArticle(input.id);
+      }
+
       await db
         .update(article)
         .set({ deletedAt: new Date() })
@@ -418,6 +466,11 @@ export const articleRouter = {
 
       if (!existing) {
         throw new ORPCError("NOT_FOUND");
+      }
+
+      // Cancel scheduled job if article was scheduled
+      if (existing.article.status === "scheduled") {
+        await cancelScheduledArticle(input.id);
       }
 
       const [updated] = await db
@@ -464,6 +517,9 @@ export const articleRouter = {
         })
         .where(eq(article.id, input.id))
         .returning();
+
+      // Schedule the job in the queue
+      await scheduleArticlePublish(input.id, input.scheduledFor);
 
       return updated;
     }),

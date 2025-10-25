@@ -1,5 +1,6 @@
 {
-  "name": "@content-next-v2/api",
+  "name": "@content-next-v2/scheduler",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -10,7 +11,6 @@
       "default": "./src/*.ts"
     }
   },
-  "type": "module",
   "scripts": {
     "build": "tsdown"
   },
@@ -21,15 +21,10 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@orpc/server": "catalog:",
-    "@orpc/client": "catalog:",
-    "@orpc/openapi": "catalog:",
-    "@orpc/zod": "catalog:",
-    "hono": "catalog:",
+    "bullmq": "^5.28.2",
+    "ioredis": "^5.4.2",
     "dotenv": "catalog:",
     "zod": "catalog:",
-    "@content-next-v2/auth": "workspace:*",
-    "@content-next-v2/db": "workspace:*",
-    "@content-next-v2/scheduler": "workspace:*"
+    "@content-next-v2/db": "workspace:*"
   }
 }

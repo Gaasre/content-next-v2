@@ -19,7 +19,8 @@
     "zod": "catalog:",
     "@content-next-v2/api": "workspace:*",
     "@content-next-v2/auth": "workspace:*",
-    "@content-next-v2/db": "workspace:*"
+    "@content-next-v2/db": "workspace:*",
+    "@content-next-v2/scheduler": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",

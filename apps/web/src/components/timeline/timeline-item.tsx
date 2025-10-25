@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Eye, Clock, TrendingUp, Award, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { TrendSparkline } from "@/components/ui/trend-sparkline";
 import { ArticleDetailedStats } from "./article-detailed-stats";
 import { EditArticleForm } from "../forms/edit-article-form";
+import { DeleteArticleButton } from "./delete-article-button";
 import { orpc } from "@/utils/orpc";
 import { useQuery } from "@tanstack/react-query";
+import { useSmoothScrollToCenter } from "@/hooks/use-smooth-scroll-to-center";
 
 interface Article {
   id: string;
@@ -48,7 +50,7 @@ export function TimelineItem({ article }: TimelineItemProps) {
         timeRange: "7d",
       },
     }),
-    enabled: isExpanded && !isScheduled,
+    enabled: isExpanded && !isScheduled && !isDeactivated,
   });
 
   // Calculate stats from API data
@@ -79,25 +81,7 @@ export function TimelineItem({ article }: TimelineItemProps) {
     !isScheduled && !isDeactivated && !isTrending && avgCompletionRate >= 90;
 
   // Smooth scroll to center on expand
-  useEffect(() => {
-    if (isExpanded && cardRef.current) {
-      const card = cardRef.current;
-      const cardRect = card.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
-
-      // Calculate position to center the card
-      const targetScroll =
-        scrollTop + cardRect.top - viewportHeight / 2 + cardRect.height / 2;
-
-      // Smooth scroll
-      window.scrollTo({
-        top: targetScroll,
-        behavior: "smooth",
-      });
-    }
-  }, [isExpanded]);
+  useSmoothScrollToCenter(cardRef, isExpanded);
 
   return (
     <div
@@ -116,7 +100,7 @@ export function TimelineItem({ article }: TimelineItemProps) {
             "hover:border-primary/50",
           isTrending && !isExpanded && "hover:border-orange-500/50",
           isHighPerformer && !isExpanded && "hover:border-emerald-500/50",
-          isScheduled && "opacity-50 bg-muted/50 border-muted",
+          isScheduled && !isExpanded && "opacity-50 bg-muted/50 border-muted",
           isDeactivated &&
             !isExpanded &&
             "opacity-40 bg-muted/30 border-muted grayscale",
@@ -306,8 +290,9 @@ export function TimelineItem({ article }: TimelineItemProps) {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Close Button */}
-            <div className="absolute top-3 right-3 z-20">
+            {/* Close and Delete Buttons */}
+            <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+              <DeleteArticleButton articleId={article.id} />
               <button
                 type="button"
                 onClick={() => setIsExpanded(false)}
@@ -318,19 +303,17 @@ export function TimelineItem({ article }: TimelineItemProps) {
             </div>
 
             {/* Title and Description Fields */}
-            <EditArticleForm
-              article={article}
-              onSuccess={() => setIsExpanded(false)}
-            />
+            <EditArticleForm article={article} onSuccess={() => {}} />
 
             {/* Detailed Stats - only show for published articles */}
-            {!isScheduled ? (
+            {!isScheduled && !isDeactivated ? (
               <ArticleDetailedStats articleId={article.id} />
             ) : (
               <div className="px-4 pb-4 pt-4 border-t text-center">
                 <p className="text-sm text-muted-foreground">
-                  This article is scheduled for publication and doesn't have
-                  stats yet.
+                  {isScheduled
+                    ? "This article is scheduled for publication and doesn't have stats yet."
+                    : "This is a draft article and doesn't have stats yet."}
                 </p>
               </div>
             )}

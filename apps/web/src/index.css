@@ -215,8 +215,9 @@
 }
 
 .ProseMirror code {
-  background-color: oklch(var(--muted));
-  color: oklch(var(--foreground));
+  color: oklch(var(--card-foreground));
+  background-color: hsl(225, 5%, 20%);
+  border: 1px solid hsl(240, 2%, 30%);
   padding: 0.2em 0.4em;
   border-radius: 0.25rem;
   font-size: 0.875em;
@@ -224,9 +225,10 @@
 }
 
 .ProseMirror pre {
-  background-color: oklch(var(--muted));
+  background-color: hsl(225, 5%, 20%);
+  border: 1px solid hsl(240, 2%, 30%);
   color: oklch(var(--foreground));
-  padding: 1rem;
+  padding: 0.5rem;
   border-radius: 0.5rem;
   overflow-x: auto;
   font-family: var(--font-mono);
@@ -234,6 +236,7 @@
 
 .ProseMirror pre code {
   background: none;
+  border: none;
   padding: 0;
   font-size: 0.875rem;
   color: inherit;
@@ -244,6 +247,13 @@
   padding-left: 1rem;
   font-style: italic;
   color: oklch(var(--muted-foreground));
+}
+
+.ProseMirror hr {
+  border: none;
+  height: 1px;
+  background: hsl(240, 2%, 30%);
+  margin: 1rem 0;
 }
 
 .ProseMirror a {

@@ -23,7 +23,7 @@ export function HeroSection() {
 
       {/* Subtle accent line */}
       <motion.div
-        className="w-16 h-[2px] bg-gradient-to-r from-primary via-primary to-transparent"
+        className="w-1/2 h-[2px] bg-linear-to-r from-transparent via-primary to-transparent"
         initial={{ opacity: 0, scaleX: 0 }}
         animate={{ opacity: 1, scaleX: 1 }}
         transition={{ duration: 0.6, delay: 0.3 }}

@@ -10,19 +10,12 @@ import { orpc } from "@/utils/orpc";
 import { useWebsite } from "@/contexts/website-context";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type FilterType =
-  | "all"
-  | "published"
-  | "scheduled"
-  | "inactive"
-  | "trending"
-  | "highly-rated";
+type FilterType = "all" | "published" | "scheduled" | "inactive";
 
 export function TimelineContainer() {
   const { currentWebsite } = useWebsite();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Map filter to API status
@@ -65,25 +58,11 @@ export function TimelineContainer() {
   );
 
   // Flatten pages into single article array
+  // Articles are already sorted by the server: Drafts first, then timeline (scheduled + published)
   const articles = useMemo(() => {
     if (!data?.pages) return [];
     return data.pages.flatMap((page) => page.articles);
   }, [data]);
-
-  // Apply client-side filters and sorting
-  const filteredAndSortedArticles = useMemo(() => {
-    let filtered = articles;
-
-    // Note: trending and highly-rated filters removed (require analytics)
-    // These will be added when analytics tables are implemented
-
-    // Sort by date (most recent first)
-    return [...filtered].sort((a, b) => {
-      const dateA = a.scheduledFor || a.publishedAt || a.createdAt;
-      const dateB = b.scheduledFor || b.publishedAt || b.createdAt;
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, [articles]);
 
   // Intersection observer for infinite scroll
   useEffect(() => {
@@ -120,8 +99,6 @@ export function TimelineContainer() {
         setActiveFilter={setActiveFilter}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        isSearchExpanded={isSearchExpanded}
-        setIsSearchExpanded={setIsSearchExpanded}
         counts={{
           all: allCount,
           published: publishedCount,
@@ -184,7 +161,7 @@ export function TimelineContainer() {
         {/* Timeline items */}
         {!isLoading && !isError && currentWebsite && (
           <div className="space-y-10">
-            {filteredAndSortedArticles.length === 0 ? (
+            {articles.length === 0 ? (
               <div className="text-center py-16 ml-36">
                 <p className="text-muted-foreground text-sm">
                   {searchQuery || activeFilter !== "all"
@@ -193,12 +170,12 @@ export function TimelineContainer() {
                 </p>
               </div>
             ) : (
-              filteredAndSortedArticles.map((article, index) => {
-                const displayDate =
-                  article.scheduledFor ||
-                  article.publishedAt ||
-                  article.createdAt;
+              articles.map((article, index) => {
+                const isDraft = article.status === "draft";
                 const isScheduled = article.status === "scheduled";
+                const displayDate = isScheduled
+                  ? article.scheduledFor ?? undefined
+                  : article.publishedAt ?? undefined;
 
                 return (
                   <div
@@ -211,6 +188,7 @@ export function TimelineContainer() {
                       <TimelineDateMarker
                         date={displayDate}
                         isScheduled={isScheduled}
+                        isDraft={isDraft}
                       />
                     </div>
 
@@ -240,7 +218,7 @@ export function TimelineContainer() {
         )}
 
         {/* End marker */}
-        {!isLoading && filteredAndSortedArticles.length > 0 && !hasNextPage && (
+        {!isLoading && articles.length > 0 && !hasNextPage && (
           <div className="relative pl-[160px] pt-8">
             <div className="absolute left-[130px] top-8">
               <div className="size-1.5 rounded-full bg-border/60" />

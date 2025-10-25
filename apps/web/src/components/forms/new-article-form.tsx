@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Calendar as CalendarIcon, Loader2, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { ArticleEditor } from "@/components/timeline/article-editor";
+import { ArticleEditor } from "@/components/article-editor/article-editor";
 import {
   Popover,
   PopoverContent,
