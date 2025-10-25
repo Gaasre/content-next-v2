@@ -1,0 +1,311 @@
+---
+title: Error Handling
+description: Handle errors gracefully when fetching articles
+---
+
+# Error Handling
+
+Learn how to handle errors when fetching articles from Content Next.
+
+## ContentNextAPIError
+
+The SDK throws `ContentNextAPIError` for API-related errors:
+
+```typescript
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+
+class ContentNextAPIError extends Error {
+  name: "ContentNextAPIError";
+  status?: number; // HTTP status code
+  code?: string; // Error code
+  details?: unknown; // Additional error details
+}
+```
+
+## Common Error Codes
+
+| Status | Error                 | Description                          |
+| ------ | --------------------- | ------------------------------------ |
+| `400`  | Bad Request           | Invalid parameters (e.g., page < 1)  |
+| `401`  | Unauthorized          | Invalid or missing API key           |
+| `404`  | Not Found             | Article with that slug doesn't exist |
+| `429`  | Too Many Requests     | Rate limit exceeded                  |
+| `500`  | Internal Server Error | Server-side error                    |
+
+## Basic Error Handling
+
+### For Single Articles
+
+```tsx
+import { ContentNextClient, ContentNextAPIError } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  try {
+    const article = await client.articles.getBySlug(params.slug);
+
+    return (
+      <article>
+        <h1>{article.title}</h1>
+        <div dangerouslySetInnerHTML={{ __html: article.content }} />
+      </article>
+    );
+  } catch (error) {
+    if (error instanceof ContentNextAPIError && error.status === 404) {
+      notFound();
+    }
+    throw error;
+  }
+}
+```
+
+### For Article Lists
+
+```tsx
+export default async function BlogPage() {
+  try {
+    const { articles } = await client.articles.list({ page: 1, limit: 10 });
+
+    return (
+      <div>
+        {articles.map((article) => (
+          <div key={article.id}>{article.title}</div>
+        ))}
+      </div>
+    );
+  } catch (error) {
+    if (error instanceof ContentNextAPIError) {
+      return (
+        <div>
+          <h1>Error</h1>
+          <p>Failed to load articles: {error.message}</p>
+        </div>
+      );
+    }
+    throw error;
+  }
+}
+```
+
+## Advanced Error Handling
+
+Handle different error types with specific actions:
+
+```tsx
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+
+try {
+  const article = await client.articles.getBySlug(slug);
+  return article;
+} catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    switch (error.status) {
+      case 404:
+        // Article doesn't exist
+        notFound();
+        break;
+
+      case 401:
+        // Invalid API key
+        console.error("Invalid API key configuration");
+        throw new Error("Configuration error");
+
+      case 429:
+        // Rate limit exceeded
+        console.error("Rate limit exceeded");
+        throw new Error("Too many requests, please try again later");
+
+      default:
+        // Other API errors
+        console.error("API error:", error.message);
+        throw new Error(`API error: ${error.message}`);
+    }
+  }
+
+  // Re-throw unexpected errors
+  throw error;
+}
+```
+
+## Type-Safe Error Checking
+
+Create helper functions for common error checks:
+
+```tsx
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof ContentNextAPIError && error.status === 404;
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+  return error instanceof ContentNextAPIError && error.status === 401;
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof ContentNextAPIError && error.status === 429;
+}
+
+// Usage
+try {
+  const article = await client.articles.getBySlug("test");
+} catch (error) {
+  if (isNotFoundError(error)) {
+    notFound();
+  } else if (isUnauthorizedError(error)) {
+    console.error("Check your API key");
+  } else if (isRateLimitError(error)) {
+    console.error("Slow down!");
+  }
+}
+```
+
+## Error Boundaries
+
+For client components, use React Error Boundaries:
+
+```tsx
+// app/blog/error.tsx
+"use client";
+
+export default function ErrorBoundary({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+      <p className="text-gray-600 mb-4">{error.message}</p>
+      <button
+        onClick={reset}
+        className="px-4 py-2 bg-blue-500 text-white rounded"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+```
+
+## Validation Errors
+
+Prevent errors by validating inputs:
+
+```tsx
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  // Validate page number
+  const page = Math.max(1, Number(searchParams.page) || 1);
+
+  // Ensure limit is within bounds
+  const limit = Math.min(100, Math.max(1, 20));
+
+  try {
+    const { articles } = await client.articles.list({ page, limit });
+    // ...
+  } catch (error) {
+    // ...
+  }
+}
+```
+
+## Logging Errors
+
+Log errors for debugging:
+
+```tsx
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  // Log to console in development
+  if (process.env.NODE_ENV === "development") {
+    console.error("Failed to fetch article:", error);
+  }
+
+  // Log to error tracking service in production
+  if (process.env.NODE_ENV === "production") {
+    // e.g., Sentry, LogRocket, etc.
+    // logError(error);
+  }
+
+  throw error;
+}
+```
+
+## Best Practices
+
+### 1. Always Handle 404s
+
+```tsx
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  if (error instanceof ContentNextAPIError && error.status === 404) {
+    notFound();
+  }
+  throw error;
+}
+```
+
+### 2. Don't Swallow Errors
+
+```tsx
+// ❌ Bad - silently fails
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  return null; // User has no idea what went wrong
+}
+
+// ✅ Good - shows error or re-throws
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  if (error instanceof ContentNextAPIError && error.status === 404) {
+    notFound();
+  }
+  throw error; // Let Next.js handle it
+}
+```
+
+### 3. Provide User-Friendly Messages
+
+```tsx
+catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    return <ErrorMessage message="Failed to load article. Please try again later." />;
+  }
+  throw error;
+}
+```
+
+### 4. Check Your API Key
+
+If you get 401 errors, verify your API key:
+
+```tsx
+if (!process.env.CONTENT_API_KEY) {
+  throw new Error("CONTENT_API_KEY environment variable is not set");
+}
+```
+
+## Next Steps
+
+- Learn about [caching strategies](/docs/fetching-articles/caching)
+- Check the [API Reference](/docs/api-reference/errors) for complete error documentation
+- See the [Quick Start guide](/docs/quick-start) for a complete example

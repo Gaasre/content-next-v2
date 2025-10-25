@@ -1,0 +1,225 @@
+---
+title: Articles API
+description: Methods for fetching and managing articles
+---
+
+# Articles API
+
+All article-related methods are available under `client.articles`.
+
+## articles.list()
+
+Retrieve a paginated list of published articles.
+
+```typescript
+client.articles.list(options?: ListArticlesOptions): Promise<ListArticlesResponse>
+```
+
+### Parameters
+
+**`options`** (optional): Configuration object
+
+- `page` (number, optional): Page number, starts at 1. Default: `1`
+- `limit` (number, optional): Number of articles per page (1-100). Default: `20`
+
+### Returns
+
+Promise that resolves to a `ListArticlesResponse`:
+
+```typescript
+{
+  articles: ArticleSummary[];  // Array of article summaries (without content)
+  page: number;                 // Current page number
+  limit: number;                // Items per page
+}
+```
+
+### Example
+
+```typescript
+// Get first page with default limit (20)
+const { articles, page, limit } = await client.articles.list();
+
+// Get specific page with custom limit
+const result = await client.articles.list({
+  page: 2,
+  limit: 10,
+});
+
+// Iterate through articles
+result.articles.forEach((article) => {
+  console.log(article.title, article.slug);
+});
+```
+
+### Validation
+
+- `page` must be >= 1
+- `limit` must be between 1 and 100
+- Invalid values will throw `ContentNextAPIError`
+
+---
+
+## articles.getBySlug()
+
+Retrieve a single published article by its slug, including full content.
+
+```typescript
+client.articles.getBySlug(slug: string): Promise<Article>
+```
+
+### Parameters
+
+**`slug`** (required): The article slug (URL-friendly identifier)
+
+### Returns
+
+Promise that resolves to a complete `Article` object with content.
+
+### Example
+
+```typescript
+// Get article by slug
+const article = await client.articles.getBySlug("my-first-post");
+
+console.log(article.title); // "My First Post"
+console.log(article.content); // Markdown content
+```
+
+### Error Handling
+
+```typescript
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+
+try {
+  const article = await client.articles.getBySlug(params.slug);
+  return <Article data={article} />;
+} catch (error) {
+  if (error instanceof ContentNextAPIError && error.status === 404) {
+    notFound();
+  }
+  throw error;
+}
+```
+
+---
+
+## Complete Examples
+
+### Blog Listing Page
+
+```typescript
+// app/blog/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+import Link from "next/link";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  const currentPage = Number(searchParams.page) || 1;
+
+  const { articles, limit } = await client.articles.list({
+    page: currentPage,
+    limit: 12,
+  });
+
+  return (
+    <div>
+      <h1>Blog</h1>
+      <div className="grid gap-6">
+        {articles.map((article) => (
+          <article key={article.id}>
+            <Link href={`/blog/${article.slug}`}>
+              <h2>{article.title}</h2>
+            </Link>
+            <p>{article.description}</p>
+            <span>{article.readTime} min read</span>
+          </article>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {articles.length === limit && (
+        <Link href={`/blog?page=${currentPage + 1}`}>Next Page</Link>
+      )}
+    </div>
+  );
+}
+```
+
+### Article Detail Page
+
+```typescript
+// app/blog/[slug]/page.tsx
+import { ContentNextClient, ContentNextAPIError } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import ReactMarkdown from "react-markdown";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  try {
+    const article = await client.articles.getBySlug(params.slug);
+    return {
+      title: article.title,
+      description: article.description,
+    };
+  } catch {
+    return { title: "Article Not Found" };
+  }
+}
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  try {
+    const article = await client.articles.getBySlug(params.slug);
+
+    return (
+      <article>
+        <h1>{article.title}</h1>
+        <p>{article.description}</p>
+        <time>{new Date(article.publishedAt!).toLocaleDateString()}</time>
+        <ReactMarkdown className="prose prose-lg max-w-none">
+          {article.content}
+        </ReactMarkdown>
+      </article>
+    );
+  } catch (error) {
+    if (error instanceof ContentNextAPIError && error.status === 404) {
+      notFound();
+    }
+    throw error;
+  }
+}
+```
+
+## TypeScript Types
+
+For type definitions of `Article`, `ArticleSummary`, and other related types, see the [Types](/docs/api-reference/types) documentation.
+
+## Error Handling
+
+For detailed error handling information, see the [Errors](/docs/api-reference/errors) documentation.
+
+## Next Steps
+
+- Learn about [Type Definitions](/docs/api-reference/types)
+- Understand [Error Handling](/docs/api-reference/errors)
+- Check [Fetching Articles](/docs/fetching-articles) for more examples

@@ -1,13 +1,93 @@
 ---
-title: Hello World
-description: Your first document
+title: Introduction
+description: Welcome to Content Next - The simplest way to add a blog to your Next.js application
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+# Welcome to Content Next
 
-## What is Next?
+Content Next is a headless content management platform designed specifically for developers who want to add blog and article functionality to their websites without the complexity of traditional CMS platforms.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+## What is Content Next?
+
+Content Next provides a simple API and SDK that lets you fetch and display articles on your website in minutes. Write and manage your content in our dashboard, then display it beautifully on your site with full control over the design.
+
+## Key Features
+
+- **Fast Integration** - Add a blog to your Next.js app in under 5 minutes
+- **Type-Safe SDK** - Full TypeScript support with zero dependencies
+- **Server-Side Rendering** - Built for Next.js App Router with RSC support
+- **Built-in Analytics** - Track views, read time, and engagement automatically
+- **Simple API** - Clean, intuitive methods for fetching articles
+- **Rich Text Editor** - Write content with a modern WYSIWYG editor
+- **Scheduling** - Schedule articles to publish at specific times
+- **Multiple Projects** - Manage content for multiple websites from one account
+
+## What You Can Build
+
+- **Company Blogs** - Share updates, news, and announcements
+- **Documentation Sites** - Create guides and tutorials (alongside Fumadocs!)
+- **Personal Blogs** - Share your thoughts and ideas
+- **Marketing Content** - Publish articles for SEO and content marketing
+- **Knowledge Bases** - Build searchable article libraries
+
+## Why Content Next?
+
+### vs. Traditional CMS (WordPress, Ghost)
+
+- **Minutes, not hours** - Integration takes 5 minutes instead of days
+- **No backend** - We handle hosting, storage, and infrastructure
+- **Full design control** - Use your own styling, no theme limitations
+
+### vs. Headless CMS (Contentful, Sanity)
+
+- **Purpose-built** - Designed specifically for articles and blogs
+- **Simpler pricing** - Predictable costs, no usage-based surprises
+- **Built-in analytics** - Track engagement without additional integrations
+
+### vs. Building Your Own
+
+- **Ship faster** - Focus on your product, not CMS infrastructure
+- **Zero maintenance** - No database migrations or backend updates
+- **Feature-rich** - Scheduling, analytics, and more included
+
+## Quick Example
+
+Here's how simple it is to fetch and display articles:
+
+```tsx
+// app/blog/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function BlogPage() {
+  const { articles } = await client.articles.list({ limit: 10 });
+
+  return (
+    <div>
+      <h1>Blog</h1>
+      {articles.map((article) => (
+        <article key={article.id}>
+          <h2>{article.title}</h2>
+          <p>{article.description}</p>
+          <a href={`/blog/${article.slug}`}>Read more</a>
+        </article>
+      ))}
+    </div>
+  );
+}
+```
+
+That's it! No complex setup, no backend configuration - just install the SDK and start fetching articles.
+
+## Next Steps
+
+Ready to get started? Follow our [Quick Start guide](/docs/quick-start) to add Content Next to your Next.js application in 5 minutes.
+
+Or jump directly to:
+
+- [Fetching Articles](/docs/fetching-articles) - Learn how to fetch and display articles
+- [Analytics Tracking](/docs/analytics) - Add automatic analytics tracking
+- [API Reference](/docs/api-reference) - Complete API documentation

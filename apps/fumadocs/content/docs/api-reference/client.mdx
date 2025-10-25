@@ -1,0 +1,151 @@
+---
+title: ContentNextClient
+description: Initialize and configure the Content Next SDK client
+---
+
+# ContentNextClient
+
+The main client class for interacting with the Content Next API.
+
+## Constructor
+
+```typescript
+new ContentNextClient(options: ClientOptions)
+```
+
+Creates a new instance of the Content Next client.
+
+### Parameters
+
+**`options`** (required): Configuration object
+
+- `apiKey` (string, required): Your Content Next API key
+- `serverUrl` (string, optional): Custom API server URL. Defaults to `https://api.content-next.com`
+
+### Example
+
+```typescript
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+```
+
+### With Custom Server URL
+
+```typescript
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+  serverUrl: "https://custom-api.example.com",
+});
+```
+
+## ClientOptions Type
+
+```typescript
+interface ClientOptions {
+  apiKey: string; // Your Content Next API key (required)
+  serverUrl?: string; // Custom API URL (optional)
+}
+```
+
+## Best Practices
+
+### 1. Store API Keys Securely
+
+Always use environment variables:
+
+```typescript
+// ✅ Good
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+// ❌ Bad - Never hardcode API keys
+const client = new ContentNextClient({
+  apiKey: "cn_abc123...",
+});
+```
+
+### 2. Create a Helper Function
+
+For reusability, create a helper:
+
+```typescript
+// lib/content.ts
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+export function getContentClient() {
+  if (!process.env.CONTENT_API_KEY) {
+    throw new Error("CONTENT_API_KEY environment variable is not set");
+  }
+
+  return new ContentNextClient({
+    apiKey: process.env.CONTENT_API_KEY,
+  });
+}
+```
+
+Usage:
+
+```typescript
+import { getContentClient } from "@/lib/content";
+
+const client = getContentClient();
+const { articles } = await client.articles.list();
+```
+
+### 3. Initialize Once Per Request
+
+In Server Components, create the client once per request:
+
+```typescript
+// app/blog/page.tsx
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function BlogPage() {
+  const { articles } = await client.articles.list();
+  // ...
+}
+```
+
+## Available Methods
+
+The client provides access to:
+
+- **`client.articles.list()`** - Fetch paginated list of articles
+- **`client.articles.getBySlug()`** - Fetch single article by slug
+
+See the [Articles API](/docs/api-reference/articles) documentation for detailed information on each method.
+
+## Error Handling
+
+The client throws `ContentNextAPIError` for API-related errors:
+
+```typescript
+import { ContentNextClient, ContentNextAPIError } from "@content-next-v2/sdk";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+try {
+  const article = await client.articles.getBySlug("nonexistent");
+} catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    console.error(`API Error: ${error.message}`);
+    console.error(`Status: ${error.status}`);
+  }
+}
+```
+
+See [Error Handling](/docs/api-reference/errors) for more details.
+
+## Next Steps
+
+- Learn about [Articles API methods](/docs/api-reference/articles)
+- Explore [Type Definitions](/docs/api-reference/types)
+- Understand [Error Handling](/docs/api-reference/errors)

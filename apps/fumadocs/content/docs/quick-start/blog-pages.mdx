@@ -1,0 +1,191 @@
+---
+title: Creating Blog Pages
+description: Build your blog listing and article detail pages
+---
+
+# Creating Blog Pages
+
+Now that you have Content Next installed, let's create the pages to display your articles.
+
+## Blog Listing Page
+
+Create a page to display all your articles at `app/blog/page.tsx`:
+
+```tsx
+// app/blog/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+import Link from "next/link";
+
+// Initialize the client
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function BlogPage() {
+  // Fetch articles from Content Next
+  const { articles } = await client.articles.list({
+    page: 1,
+    limit: 10,
+  });
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8">Blog</h1>
+
+      <div className="grid gap-6">
+        {articles.map((article) => (
+          <article
+            key={article.id}
+            className="border rounded-lg p-6 hover:shadow-lg transition-shadow"
+          >
+            <Link href={`/blog/${article.slug}`}>
+              <h2 className="text-2xl font-semibold mb-2 hover:text-blue-600">
+                {article.title}
+              </h2>
+            </Link>
+
+            <p className="text-gray-600 mb-4">{article.description}</p>
+
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span>{article.readTime} min read</span>
+              <span>•</span>
+              <time>{new Date(article.publishedAt!).toLocaleDateString()}</time>
+            </div>
+
+            {article.tags.length > 0 && (
+              <div className="flex gap-2 mt-4">
+                {article.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-1 bg-gray-100 rounded text-xs"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### What This Does
+
+- **Fetches articles** using the Content Next SDK
+- **Displays article summaries** with title, description, and metadata
+- **Links to article pages** using the article slug
+- **Shows tags** if the article has any
+
+## Article Detail Page
+
+Create a dynamic route to display individual articles at `app/blog/[slug]/page.tsx`:
+
+```tsx
+// app/blog/[slug]/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  try {
+    // Fetch the full article
+    const article = await client.articles.getBySlug(params.slug);
+
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <article>
+          <header className="mb-8">
+            <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
+
+            <p className="text-xl text-gray-600 mb-4">{article.description}</p>
+
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <time>
+                {new Date(article.publishedAt!).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </time>
+              <span>•</span>
+              <span>{article.readTime} min read</span>
+            </div>
+
+            {article.tags.length > 0 && (
+              <div className="flex gap-2 mt-4">
+                {article.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 bg-gray-100 rounded-full text-sm"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </header>
+
+          {/* Render Markdown content */}
+          <div className="prose prose-lg max-w-none">
+            {/* Install: npm install react-markdown */}
+            {/* Or render with your preferred Markdown library */}
+            <pre>{article.content}</pre>
+          </div>
+        </article>
+      </div>
+    );
+  } catch (error) {
+    // Article not found or other error
+    notFound();
+  }
+}
+```
+
+### What This Does
+
+- **Fetches a single article** by its slug
+- **Displays the full article** with title, description, and content
+- **Shows metadata** like publish date and read time
+- **Handles errors** by showing a 404 page if the article doesn't exist
+
+## Test Your Pages
+
+1. Start your Next.js development server:
+
+```bash
+npm run dev
+```
+
+2. Visit `http://localhost:3000/blog` to see your article list
+3. Click on an article to view the full content
+
+## Create Your First Article
+
+If you haven't already, create an article in your Content Next dashboard:
+
+1. Go to your Content Next dashboard
+2. Click **"New Article"**
+3. Fill in the details:
+   - **Title**: My First Blog Post
+   - **Slug**: my-first-blog-post
+   - **Description**: This is my first article using Content Next
+   - **Content**: Write your article content using the editor
+4. Click **"Publish"**
+
+Your article will now appear on your blog!
+
+## Next Step
+
+Now let's add analytics tracking to see how your articles are performing.
+
+👉 [Continue to Adding Analytics](/docs/quick-start/analytics)

@@ -1,0 +1,260 @@
+---
+title: Configuration
+description: Configure analytics tracking options for your blog
+---
+
+# Analytics Configuration
+
+Configure Content Next analytics to match your blog's URL structure and requirements.
+
+## Script Attributes
+
+The analytics script accepts the following configuration attributes:
+
+### Required
+
+| Attribute      | Description               | Example                         |
+| -------------- | ------------------------- | ------------------------------- |
+| `data-api-key` | Your Content Next API key | `{process.env.CONTENT_API_KEY}` |
+
+### Optional
+
+| Attribute         | Description                    | Default                        | Example                |
+| ----------------- | ------------------------------ | ------------------------------ | ---------------------- |
+| `data-blog-path`  | Path prefix for your blog      | `undefined`                    | `/blog` or `/articles` |
+| `data-server-url` | Custom API URL (rarely needed) | `https://api.content-next.com` | Custom domain          |
+
+## Configuration Examples
+
+### Basic Configuration
+
+Minimal setup for tracking:
+
+```tsx
+<script
+  defer
+  data-api-key={process.env.CONTENT_API_KEY}
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+### With Blog Path
+
+If your articles are under `/blog`:
+
+```tsx
+<script
+  defer
+  data-api-key={process.env.CONTENT_API_KEY}
+  data-blog-path="/blog"
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+### With Nested Path
+
+If your articles are under `/articles/posts`:
+
+```tsx
+<script
+  defer
+  data-api-key={process.env.CONTENT_API_KEY}
+  data-blog-path="/articles/posts"
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+### With Custom Server
+
+If using a custom Content Next deployment:
+
+```tsx
+<script
+  defer
+  data-api-key={process.env.CONTENT_API_KEY}
+  data-server-url="https://your-custom-domain.com"
+  data-blog-path="/blog"
+  src="https://your-custom-domain.com/js/analytics.js"
+/>
+```
+
+## Slug Detection
+
+The analytics script automatically detects the article slug from your URL.
+
+### With Blog Path Configured
+
+If you set `data-blog-path="/blog"`:
+
+- URL: `https://example.com/blog/my-article/comments`
+- Detected slug: `my-article` (first segment after `/blog`)
+
+### Without Blog Path
+
+If no blog path is configured:
+
+- URL: `https://example.com/any/structure/my-article`
+- Detected slug: `my-article` (last path segment)
+
+**Best Practice**: Always set `data-blog-path` to ensure accurate slug detection, especially if your URLs have additional segments after the article slug.
+
+## Multiple Websites
+
+If you manage multiple websites with Content Next, use different API keys:
+
+### Site 1
+
+```tsx
+// Site 1: example.com
+<script
+  defer
+  data-api-key={process.env.SITE1_API_KEY}
+  data-blog-path="/blog"
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+### Site 2
+
+```tsx
+// Site 2: another-site.com
+<script
+  defer
+  data-api-key={process.env.SITE2_API_KEY}
+  data-blog-path="/articles"
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+Analytics are automatically separated by website in your dashboard.
+
+## Privacy Configuration
+
+### Cookie Information
+
+Content Next uses a single cookie for visitor tracking:
+
+- **Cookie Name**: `cn_visitor_id`
+- **Duration**: 1 year
+- **Purpose**: Identify unique visitors and track reading patterns
+- **Format**: `visitor_{timestamp}_{random}`
+
+### What We Track
+
+- Anonymous visitor ID (no personal information)
+- Article slug
+- View timestamp
+- Read time and scroll depth
+
+### What We Don't Track
+
+- Personal information (name, email, etc.)
+- IP addresses
+- Browsing history outside your articles
+- Data is NOT sent to third parties
+
+### GDPR Compliance
+
+- No personal data is collected
+- Visitor IDs are anonymous and non-identifiable
+- Data is only used for article analytics
+- No tracking across different websites
+
+## Advanced Configuration
+
+### Conditional Loading
+
+Load analytics only in production:
+
+```tsx
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        {process.env.NODE_ENV === "production" && (
+          <script
+            defer
+            data-api-key={process.env.CONTENT_API_KEY}
+            data-blog-path="/blog"
+            src="https://api.content-next.com/js/analytics.js"
+          />
+        )}
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+### User Opt-Out
+
+Allow users to opt-out of tracking (if desired):
+
+```tsx
+export default function RootLayout({ children }) {
+  // Check if user has opted out (implement your own logic)
+  const userOptedOut = false; // e.g., from cookies or localStorage
+
+  return (
+    <html lang="en">
+      <head>
+        {!userOptedOut && (
+          <script
+            defer
+            data-api-key={process.env.CONTENT_API_KEY}
+            data-blog-path="/blog"
+            src="https://api.content-next.com/js/analytics.js"
+          />
+        )}
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Best Practices
+
+### 1. Always Set Blog Path
+
+```tsx
+// ✅ Good - accurate slug detection
+<script data-blog-path="/blog" ... />
+
+// ❌ Risky - may detect wrong slug
+<script ... />
+```
+
+### 2. Use Environment Variables
+
+```tsx
+// ✅ Good
+<script data-api-key={process.env.CONTENT_API_KEY} />
+
+// ❌ Bad - hardcoded key
+<script data-api-key="cn_abc123..." />
+```
+
+### 3. Add Script in Root Layout
+
+Place the script in your root layout to track all pages:
+
+```tsx
+// app/layout.tsx - ✅ Good
+<script defer data-api-key={...} />
+
+// app/blog/layout.tsx - ❌ Limited scope
+<script defer data-api-key={...} />
+```
+
+### 4. Use the `defer` Attribute
+
+Always use `defer` to prevent blocking page rendering:
+
+```tsx
+<script defer data-api-key={...} src="..." />
+```
+
+## Next Steps
+
+Learn how to [test and troubleshoot](/docs/analytics/troubleshooting) your analytics setup.

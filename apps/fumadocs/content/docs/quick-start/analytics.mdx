@@ -1,0 +1,123 @@
+---
+title: Adding Analytics
+description: Enable automatic tracking for views and engagement
+---
+
+# Adding Analytics
+
+Track how your articles are performing by adding the Content Next analytics script.
+
+## What Gets Tracked
+
+The analytics script automatically tracks:
+
+- **Page views** - How many times each article is viewed
+- **Read time** - How long visitors spend reading
+- **Scroll depth** - How far down the page visitors scroll
+- **Engagement** - Overall reading patterns and completion rates
+
+All data is available in your Content Next dashboard.
+
+## Add the Analytics Script
+
+Add the analytics script to your root layout at `app/layout.tsx`:
+
+```tsx
+// app/layout.tsx
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "My Blog",
+  description: "My awesome blog powered by Content Next",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <head>
+        {/* Content Next Analytics */}
+        <script
+          defer
+          data-api-key={process.env.CONTENT_API_KEY}
+          data-blog-path="/blog"
+          src="https://api.content-next.com/js/analytics.js"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+### Configuration
+
+- **`data-api-key`** - Your Content Next API key (from environment variables)
+- **`data-blog-path`** - The path prefix for your blog (e.g., `/blog`)
+- **`defer`** - Loads the script without blocking page rendering
+
+## Test Analytics
+
+1. Start your development server:
+
+```bash
+npm run dev
+```
+
+2. Visit an article page: `http://localhost:3000/blog/my-first-blog-post`
+3. Scroll through the article and stay on the page for a few seconds
+4. Go to your Content Next dashboard and check the analytics for that article
+
+You should see:
+
+- View count increased
+- Read time recorded
+- Scroll depth tracked
+
+## View Analytics in Dashboard
+
+To see your analytics data:
+
+1. Go to your [Content Next dashboard](https://content-next.com/dashboard)
+2. Select your website project
+3. Click on any article to see detailed analytics:
+   - Total views and unique visitors
+   - Average read time
+   - Scroll depth and completion rate
+   - Trends over time
+
+## Privacy Note
+
+Content Next analytics are privacy-friendly:
+
+- No personal information is collected
+- Only anonymous visitor IDs are used
+- No data is shared with third parties
+- Compliant with privacy regulations
+
+## Congratulations! 🎉
+
+You've successfully integrated Content Next into your Next.js application!
+
+### What You've Built
+
+✅ Blog listing page showing all articles  
+✅ Individual article pages with full content  
+✅ Analytics tracking for engagement metrics  
+✅ A complete content management workflow
+
+## Next Steps
+
+Now that your blog is up and running, explore more features:
+
+- **[Fetching Articles](/docs/fetching-articles)** - Learn about pagination, error handling, and caching
+- **[Analytics Guide](/docs/analytics)** - Deep dive into analytics configuration
+- **[API Reference](/docs/api-reference)** - Complete SDK documentation
+
+Need help? Contact us at support@content-next.com
+
+Happy blogging! 🚀

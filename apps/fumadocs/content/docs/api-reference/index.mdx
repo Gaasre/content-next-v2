@@ -1,0 +1,39 @@
+---
+title: API Reference
+description: Complete API reference for the Content Next SDK
+---
+
+# API Reference
+
+Complete reference documentation for the Content Next SDK. All methods are designed for server-side use in Next.js Server Components.
+
+## Installation
+
+```bash
+npm install @content-next-v2/sdk
+```
+
+## Quick Example
+
+```typescript
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+// List articles
+const { articles } = await client.articles.list({ page: 1, limit: 10 });
+
+// Get single article
+const article = await client.articles.getBySlug("my-article");
+```
+
+## In This Section
+
+- **[Client](/docs/api-reference/client)** - Initialize the ContentNextClient
+- **[Articles API](/docs/api-reference/articles)** - Methods for fetching articles
+- **[Types](/docs/api-reference/types)** - TypeScript type definitions
+- **[Errors](/docs/api-reference/errors)** - Error handling and error types
+
+Explore each section for detailed documentation, parameters, return types, and examples.

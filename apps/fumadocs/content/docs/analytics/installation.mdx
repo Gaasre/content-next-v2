@@ -1,0 +1,115 @@
+---
+title: Installation
+description: Add the analytics tracking script to your Next.js application
+---
+
+# Installing Analytics
+
+Add Content Next analytics to your Next.js application with a simple script tag.
+
+## Add the Script Tag
+
+Add the analytics script to your root layout at `app/layout.tsx`:
+
+```tsx
+// app/layout.tsx
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "My Blog",
+  description: "My blog powered by Content Next",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <head>
+        {/* Content Next Analytics */}
+        <script
+          defer
+          data-api-key={process.env.CONTENT_API_KEY}
+          data-blog-path="/blog"
+          src="https://api.content-next.com/js/analytics.js"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Required Attributes
+
+| Attribute      | Description               | Example                         |
+| -------------- | ------------------------- | ------------------------------- |
+| `data-api-key` | Your Content Next API key | `{process.env.CONTENT_API_KEY}` |
+
+The `data-api-key` attribute must be set to your Content Next API key from your environment variables.
+
+## Using Environment Variables
+
+### Option 1: Server-Side (Recommended)
+
+Since the root layout is a server component by default, you can use regular environment variables:
+
+```bash
+# .env.local
+CONTENT_API_KEY=your_api_key_here
+```
+
+```tsx
+<script
+  defer
+  data-api-key={process.env.CONTENT_API_KEY}
+  data-blog-path="/blog"
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+### Option 2: Public Environment Variable
+
+Alternatively, use a public environment variable (prefixed with `NEXT_PUBLIC_`):
+
+```bash
+# .env.local
+NEXT_PUBLIC_CONTENT_API_KEY=your_api_key_here
+```
+
+```tsx
+<script
+  defer
+  data-api-key={process.env.NEXT_PUBLIC_CONTENT_API_KEY}
+  data-blog-path="/blog"
+  src="https://api.content-next.com/js/analytics.js"
+/>
+```
+
+**Note**: Since the API key is only used for read-only analytics tracking (not fetching articles), exposing it in the browser is safe.
+
+## What Happens Next
+
+Once installed, the analytics script will:
+
+1. **Automatically track page views** when visitors load article pages
+2. **Monitor reading engagement** (scroll depth and time spent)
+3. **Send data to Content Next** when visitors leave the page
+4. **Store a cookie** (`cn_visitor_id`) to identify unique visitors
+
+## Verify Installation
+
+After adding the script, verify it's working:
+
+1. Start your development server: `npm run dev`
+2. Open your browser's developer console
+3. Visit an article page
+4. Look for network requests to `api.content-next.com/rpc/analytics/trackView`
+5. You should see no JavaScript errors
+
+## Next Steps
+
+Learn how to [configure analytics](/docs/analytics/configuration) for your specific setup.

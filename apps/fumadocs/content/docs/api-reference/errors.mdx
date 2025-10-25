@@ -1,0 +1,348 @@
+---
+title: Error Handling
+description: Error types and handling strategies for the Content Next SDK
+---
+
+# Error Handling
+
+Learn how to handle errors when using the Content Next SDK.
+
+## ContentNextAPIError
+
+The SDK throws `ContentNextAPIError` for API-related errors.
+
+```typescript
+class ContentNextAPIError extends Error {
+  name: "ContentNextAPIError";
+  status?: number; // HTTP status code
+  code?: string; // Error code
+  details?: unknown; // Additional error details
+}
+```
+
+### Properties
+
+- **`message`** (string): Human-readable error message
+- **`status`** (number, optional): HTTP status code (404, 401, etc.)
+- **`code`** (string, optional): Machine-readable error code
+- **`details`** (unknown, optional): Additional error information
+
+## Common Error Codes
+
+| Status | Error Type            | Description                           |
+| ------ | --------------------- | ------------------------------------- |
+| 400    | Bad Request           | Invalid parameters (e.g., page < 1)   |
+| 401    | Unauthorized          | Invalid or missing API key            |
+| 404    | Not Found             | Article with specified slug not found |
+| 429    | Too Many Requests     | Rate limit exceeded                   |
+| 500    | Internal Server Error | Server-side error                     |
+
+## Basic Error Handling
+
+### Catching Errors
+
+```typescript
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+
+try {
+  const article = await client.articles.getBySlug("my-article");
+} catch (error) {
+  console.error("Failed to fetch article:", error);
+}
+```
+
+### Checking Error Type
+
+```typescript
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+
+try {
+  const article = await client.articles.getBySlug("nonexistent");
+} catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    console.error(`API Error: ${error.message}`);
+    console.error(`Status: ${error.status}`);
+    console.error(`Code: ${error.code}`);
+  }
+}
+```
+
+## Advanced Error Handling
+
+### Handling Specific Error Types
+
+```typescript
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+
+try {
+  const article = await client.articles.getBySlug(slug);
+  return article;
+} catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    switch (error.status) {
+      case 404:
+        notFound();
+        break;
+
+      case 401:
+        throw new Error("Invalid API key configuration");
+
+      case 429:
+        throw new Error("Rate limit exceeded, please try again later");
+
+      default:
+        throw new Error(`API error: ${error.message}`);
+    }
+  }
+
+  // Re-throw unexpected errors
+  throw error;
+}
+```
+
+### Type-Safe Error Checking
+
+Create helper functions for common error checks:
+
+```typescript
+import { ContentNextAPIError } from "@content-next-v2/sdk";
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof ContentNextAPIError && error.status === 404;
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+  return error instanceof ContentNextAPIError && error.status === 401;
+}
+
+function isRateLimitError(error: unknown): boolean {
+  return error instanceof ContentNextAPIError && error.status === 429;
+}
+
+// Usage
+try {
+  const article = await client.articles.getBySlug("test");
+} catch (error) {
+  if (isNotFoundError(error)) {
+    notFound();
+  } else if (isUnauthorizedError(error)) {
+    console.error("Check your API key");
+  } else if (isRateLimitError(error)) {
+    console.error("Slow down!");
+  }
+}
+```
+
+## Error Messages
+
+### Default Error Messages
+
+The SDK provides default messages based on HTTP status codes:
+
+- **400**: "Bad request: The request was invalid"
+- **401**: "Unauthorized: Invalid or missing API key"
+- **403**: "Forbidden: You don't have permission to access this resource"
+- **404**: "Not found: The requested resource does not exist"
+- **429**: "Too many requests: Rate limit exceeded"
+- **500**: "Internal server error: Something went wrong on the server"
+
+### Custom Error Messages
+
+You can provide custom messages based on your application's needs:
+
+```typescript
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    const userFriendlyMessage =
+      {
+        404: "This article doesn't exist or has been removed.",
+        401: "Unable to authenticate. Please check your configuration.",
+        429: "Too many requests. Please wait a moment and try again.",
+      }[error.status] || "An error occurred while loading the article.";
+
+    return <ErrorMessage message={userFriendlyMessage} />;
+  }
+}
+```
+
+## Next.js Error Handling
+
+### Error Boundaries
+
+For client components, use React Error Boundaries:
+
+```tsx
+// app/blog/error.tsx
+"use client";
+
+export default function ErrorBoundary({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+      <p className="text-gray-600 mb-4">{error.message}</p>
+      <button
+        onClick={reset}
+        className="px-4 py-2 bg-blue-500 text-white rounded"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+```
+
+### Not Found Pages
+
+For 404 errors, use Next.js `not-found.tsx`:
+
+```tsx
+// app/blog/[slug]/not-found.tsx
+export default function NotFound() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-4">Article Not Found</h1>
+      <p className="text-gray-600 mb-4">
+        The article you're looking for doesn't exist or has been removed.
+      </p>
+      <a href="/blog" className="text-blue-600 hover:underline">
+        ← Back to Blog
+      </a>
+    </div>
+  );
+}
+```
+
+## Best Practices
+
+### 1. Always Handle 404s
+
+```typescript
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  if (error instanceof ContentNextAPIError && error.status === 404) {
+    notFound();
+  }
+  throw error;
+}
+```
+
+### 2. Don't Swallow Errors
+
+```typescript
+// ❌ Bad - silently fails
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  return null; // User has no idea what went wrong
+}
+
+// ✅ Good - shows error or re-throws
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  if (error instanceof ContentNextAPIError && error.status === 404) {
+    notFound();
+  }
+  throw error; // Let Next.js handle it
+}
+```
+
+### 3. Provide User-Friendly Messages
+
+```typescript
+catch (error) {
+  if (error instanceof ContentNextAPIError) {
+    return <ErrorMessage message="Failed to load article. Please try again later." />;
+  }
+  throw error;
+}
+```
+
+### 4. Log Errors
+
+```typescript
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  // Log to console in development
+  if (process.env.NODE_ENV === "development") {
+    console.error("Failed to fetch article:", error);
+  }
+
+  // Log to error tracking service in production
+  if (process.env.NODE_ENV === "production") {
+    // e.g., Sentry, LogRocket, etc.
+    // logError(error);
+  }
+
+  throw error;
+}
+```
+
+### 5. Validate Inputs
+
+Prevent errors by validating inputs:
+
+```typescript
+// Validate page number
+const page = Math.max(1, Number(searchParams.page) || 1);
+
+// Ensure limit is within bounds
+const limit = Math.min(100, Math.max(1, 20));
+
+try {
+  const { articles } = await client.articles.list({ page, limit });
+} catch (error) {
+  // Handle error
+}
+```
+
+## Troubleshooting
+
+### 401 Unauthorized
+
+**Problem**: Invalid or missing API key.
+
+**Solutions**:
+
+1. Check your `.env.local` file
+2. Verify the API key is correct
+3. Make sure `process.env.CONTENT_API_KEY` is set
+4. Restart your development server after changing environment variables
+
+### 404 Not Found
+
+**Problem**: Article doesn't exist.
+
+**Solutions**:
+
+1. Check the slug is correct
+2. Verify the article is published (not draft)
+3. Check your Content Next dashboard
+
+### 429 Rate Limit
+
+**Problem**: Too many requests.
+
+**Solutions**:
+
+1. Implement caching with Next.js revalidation
+2. Use static generation where possible
+3. Reduce the frequency of requests
+
+## Next Steps
+
+- Learn about [Articles API](/docs/api-reference/articles) methods
+- Explore [Type Definitions](/docs/api-reference/types)
+- Check the [Client](/docs/api-reference/client) documentation
+- See [Error Handling](/docs/fetching-articles/error-handling) examples

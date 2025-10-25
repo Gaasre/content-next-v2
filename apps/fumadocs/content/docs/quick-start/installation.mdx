@@ -1,0 +1,81 @@
+---
+title: Installation
+description: Set up your Content Next account and install the SDK
+---
+
+# Installation
+
+Set up Content Next in your project by creating an account, getting your API key, and installing the SDK.
+
+## Step 1: Create a Website Project
+
+1. Log in to your [Content Next dashboard](https://content-next.com/dashboard)
+2. Click **"Add Website"** or **"New Project"**
+3. Enter your website details:
+   - **Name**: My Blog
+   - **Domain**: yourdomain.com
+4. Click **"Create"**
+
+You'll be redirected to your website's dashboard where you can see your **API Key**.
+
+## Step 2: Get Your API Key
+
+Your API key is displayed in the website dashboard. It looks like this:
+
+```
+cn_abc123def456ghi789...
+```
+
+**Important**: Keep your API key secure. Never commit it to version control or expose it in client-side code.
+
+## Step 3: Install the SDK
+
+Install the Content Next SDK in your Next.js project:
+
+```bash
+npm install @content-next-v2/sdk
+```
+
+Or with other package managers:
+
+```bash
+# Yarn
+yarn add @content-next-v2/sdk
+
+# pnpm
+pnpm add @content-next-v2/sdk
+
+# Bun
+bun add @content-next-v2/sdk
+```
+
+## Step 4: Set Up Environment Variables
+
+Create a `.env.local` file in your project root (if you don't have one already):
+
+```bash
+# .env.local
+CONTENT_API_KEY=your_api_key_here
+```
+
+Replace `your_api_key_here` with the API key from your dashboard.
+
+**Note**: Make sure `.env.local` is in your `.gitignore` file to keep your API key secure.
+
+## Verify Installation
+
+You can verify the installation by checking that the package is in your `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@content-next-v2/sdk": "^x.x.x"
+  }
+}
+```
+
+## Next Step
+
+Now that you have Content Next installed, let's create your blog pages!
+
+👉 [Continue to Creating Blog Pages](/docs/quick-start/blog-pages)

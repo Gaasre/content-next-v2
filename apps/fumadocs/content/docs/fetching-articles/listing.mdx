@@ -1,0 +1,217 @@
+---
+title: Listing Articles
+description: Fetch and display multiple articles with pagination
+---
+
+# Listing Articles
+
+Use `articles.list()` to fetch a paginated list of published articles.
+
+## Basic Usage
+
+```tsx
+// app/blog/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function BlogPage() {
+  const { articles, page, limit } = await client.articles.list({
+    page: 1,
+    limit: 10,
+  });
+
+  return (
+    <div>
+      <h1>Blog</h1>
+      {articles.map((article) => (
+        <article key={article.id}>
+          <h2>{article.title}</h2>
+          <p>{article.description}</p>
+          <span>{article.readTime} min read</span>
+        </article>
+      ))}
+    </div>
+  );
+}
+```
+
+## Options
+
+The `list()` method accepts the following options:
+
+| Option  | Type     | Default | Description                  |
+| ------- | -------- | ------- | ---------------------------- |
+| `page`  | `number` | `1`     | Page number (starts at 1)    |
+| `limit` | `number` | `20`    | Articles per page (max: 100) |
+
+## Response
+
+The response includes:
+
+```typescript
+{
+  articles: ArticleSummary[],  // Array of article summaries
+  page: number,                 // Current page number
+  limit: number,                // Items per page
+}
+```
+
+**Note**: Article summaries do NOT include the `content` field. Use `getBySlug()` to get the full article.
+
+## Article Summary Structure
+
+```typescript
+interface ArticleSummary {
+  id: string;
+  websiteId: string;
+  slug: string;
+  title: string;
+  description: string;
+  tags: string[];
+  status: "published";
+  publishedAt: string | null;
+  readTime: number;
+  createdAt: string;
+  updatedAt: string;
+  // Note: No 'content' field
+}
+```
+
+## Implementing Pagination
+
+Here's a complete example with pagination:
+
+```tsx
+// app/blog/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+import Link from "next/link";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  const currentPage = Number(searchParams.page) || 1;
+  const limit = 12;
+
+  const { articles } = await client.articles.list({
+    page: currentPage,
+    limit,
+  });
+
+  const hasNextPage = articles.length === limit;
+  const hasPreviousPage = currentPage > 1;
+
+  return (
+    <div>
+      <h1>Blog</h1>
+
+      {/* Articles Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {articles.map((article) => (
+          <article key={article.id} className="border rounded-lg p-6">
+            <Link href={`/blog/${article.slug}`}>
+              <h2 className="text-xl font-bold mb-2">{article.title}</h2>
+            </Link>
+            <p className="text-gray-600 mb-4">{article.description}</p>
+            <div className="text-sm text-gray-500">
+              {article.readTime} min read
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex gap-4 justify-center mt-8">
+        {hasPreviousPage && (
+          <Link
+            href={`/blog?page=${currentPage - 1}`}
+            className="px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Previous
+          </Link>
+        )}
+
+        <span className="px-4 py-2">Page {currentPage}</span>
+
+        {hasNextPage && (
+          <Link
+            href={`/blog?page=${currentPage + 1}`}
+            className="px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Next
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+## Helper Function
+
+For reusability, create a helper function:
+
+```tsx
+// lib/content-client.ts
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+export function getContentClient() {
+  return new ContentNextClient({
+    apiKey: process.env.CONTENT_API_KEY!,
+  });
+}
+```
+
+Then use it in your components:
+
+```tsx
+import { getContentClient } from "@/lib/content-client";
+
+const client = getContentClient();
+```
+
+## Best Practices
+
+### 1. Use TypeScript
+
+```tsx
+import type { ArticleSummary } from "@content-next-v2/sdk";
+
+const articles: ArticleSummary[] = ...
+```
+
+### 2. Validate Page Numbers
+
+```tsx
+const currentPage = Math.max(1, Number(searchParams.page) || 1);
+```
+
+### 3. Set Reasonable Limits
+
+```tsx
+const limit = 12; // Not too high, not too low
+```
+
+### 4. Handle Empty States
+
+```tsx
+{articles.length === 0 ? (
+  <p>No articles yet. Check back soon!</p>
+) : (
+  // Display articles
+)}
+```
+
+## Next Steps
+
+- Learn how to [fetch a single article](/docs/fetching-articles/single-article)
+- Understand [error handling](/docs/fetching-articles/error-handling)
+- Optimize with [caching strategies](/docs/fetching-articles/caching)

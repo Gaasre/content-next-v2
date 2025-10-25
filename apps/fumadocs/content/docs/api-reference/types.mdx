@@ -1,0 +1,260 @@
+---
+title: Type Definitions
+description: TypeScript type definitions for the Content Next SDK
+---
+
+# Type Definitions
+
+Complete TypeScript type definitions for the Content Next SDK.
+
+## Importing Types
+
+```typescript
+import type {
+  Article, // Full article with content
+  ArticleSummary, // Article without content
+  ListArticlesResponse,
+  ListArticlesOptions,
+  ClientOptions,
+  ContentNextAPIError,
+} from "@content-next-v2/sdk";
+```
+
+---
+
+## Article
+
+Complete article object including content. Returned by `articles.getBySlug()`.
+
+```typescript
+interface Article {
+  id: string; // Unique article identifier
+  websiteId: string; // Website this article belongs to
+  slug: string; // URL-friendly identifier
+  title: string; // Article title
+  description: string; // Article description/excerpt
+  content: string; // Full article content (Markdown)
+  tags: string[]; // Array of tags
+  status: "draft" | "published" | "scheduled";
+  scheduledFor: string | null; // ISO 8601 date string or null
+  publishedAt: string | null; // ISO 8601 date string or null
+  readTime: number; // Estimated reading time in minutes
+  createdAt: string; // ISO 8601 date string
+  updatedAt: string; // ISO 8601 date string
+  deletedAt: string | null; // ISO 8601 date string or null
+}
+```
+
+### Example
+
+```typescript
+const article: Article = await client.articles.getBySlug("example");
+
+console.log(article.id); // "xyz123"
+console.log(article.title); // "Example Article"
+console.log(article.content); // "# Heading\n\nMarkdown content..."
+console.log(article.readTime); // 5
+console.log(article.tags); // ["nextjs", "tutorial"]
+console.log(article.publishedAt); // "2024-10-25T12:00:00.000Z"
+```
+
+---
+
+## ArticleSummary
+
+Article metadata without content. Returned in `articles.list()` responses.
+
+```typescript
+interface ArticleSummary {
+  id: string;
+  websiteId: string;
+  slug: string;
+  title: string;
+  description: string;
+  tags: string[];
+  status: "draft" | "published" | "scheduled";
+  scheduledFor: string | null;
+  publishedAt: string | null;
+  readTime: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  // Note: No 'content' field
+}
+```
+
+**Key Difference**: `ArticleSummary` excludes the `content` field for performance.
+
+### Example
+
+```typescript
+const { articles } = await client.articles.list();
+
+articles.forEach((summary: ArticleSummary) => {
+  console.log(summary.title); // Has title
+  console.log(summary.description); // Has description
+  console.log(summary.content); // ❌ undefined - no content field
+});
+```
+
+---
+
+## ListArticlesResponse
+
+Response object from `articles.list()`.
+
+```typescript
+interface ListArticlesResponse {
+  articles: ArticleSummary[]; // Array of article summaries
+  page: number; // Current page number
+  limit: number; // Items per page
+}
+```
+
+### Example
+
+```typescript
+const response: ListArticlesResponse = await client.articles.list({
+  page: 1,
+  limit: 10,
+});
+
+console.log(response.articles.length); // 10 (or fewer on last page)
+console.log(response.page); // 1
+console.log(response.limit); // 10
+```
+
+---
+
+## ListArticlesOptions
+
+Options for `articles.list()` method.
+
+```typescript
+interface ListArticlesOptions {
+  page?: number; // Page number (min: 1), default: 1
+  limit?: number; // Items per page (1-100), default: 20
+}
+```
+
+### Validation
+
+- `page` must be >= 1
+- `limit` must be between 1 and 100
+
+### Example
+
+```typescript
+// Default options
+const options1: ListArticlesOptions = {};
+
+// Custom pagination
+const options2: ListArticlesOptions = {
+  page: 2,
+  limit: 50,
+};
+```
+
+---
+
+## ClientOptions
+
+Configuration options for initializing the client.
+
+```typescript
+interface ClientOptions {
+  apiKey: string; // Your Content Next API key (required)
+  serverUrl?: string; // Custom API URL (optional)
+}
+```
+
+### Example
+
+```typescript
+const options: ClientOptions = {
+  apiKey: process.env.CONTENT_API_KEY!,
+  serverUrl: "https://api.content-next.com", // optional
+};
+
+const client = new ContentNextClient(options);
+```
+
+---
+
+## Using Types in Your Code
+
+### Type-Safe Functions
+
+```typescript
+import type { Article, ArticleSummary } from "@content-next-v2/sdk";
+
+async function fetchArticle(slug: string): Promise<Article> {
+  const client = getContentClient();
+  return await client.articles.getBySlug(slug);
+}
+
+async function fetchArticleList(page: number): Promise<ArticleSummary[]> {
+  const client = getContentClient();
+  const { articles } = await client.articles.list({ page, limit: 10 });
+  return articles;
+}
+```
+
+### Component Props
+
+```typescript
+import type { Article, ArticleSummary } from "@content-next-v2/sdk";
+
+// Article detail component
+interface ArticleDetailProps {
+  article: Article;
+}
+
+function ArticleDetail({ article }: ArticleDetailProps) {
+  return (
+    <article>
+      <h1>{article.title}</h1>
+      <div dangerouslySetInnerHTML={{ __html: article.content }} />
+    </article>
+  );
+}
+
+// Article card component
+interface ArticleCardProps {
+  article: ArticleSummary;
+}
+
+function ArticleCard({ article }: ArticleCardProps) {
+  return (
+    <div>
+      <h2>{article.title}</h2>
+      <p>{article.description}</p>
+    </div>
+  );
+}
+```
+
+### Type Guards
+
+```typescript
+import type { Article, ArticleSummary } from "@content-next-v2/sdk";
+
+function isFullArticle(article: Article | ArticleSummary): article is Article {
+  return "content" in article;
+}
+
+// Usage
+function displayArticle(article: Article | ArticleSummary) {
+  if (isFullArticle(article)) {
+    console.log(article.content); // ✅ TypeScript knows content exists
+  } else {
+    console.log(article.description); // ✅ No content field
+  }
+}
+```
+
+## Next Steps
+
+- Check the [Articles API](/docs/api-reference/articles) for method documentation
+- Learn about [Error Handling](/docs/api-reference/errors)
+- See the [Client](/docs/api-reference/client) documentation

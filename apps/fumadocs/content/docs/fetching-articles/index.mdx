@@ -1,0 +1,44 @@
+---
+title: Fetching Articles
+description: Learn how to fetch and display articles using the Content Next SDK
+---
+
+# Fetching Articles
+
+This section covers everything you need to know about fetching articles from Content Next using the SDK in your Next.js application.
+
+## Overview
+
+The Content Next SDK provides two main methods for fetching articles:
+
+- **`articles.list()`** - Fetch a paginated list of article summaries (without content)
+- **`articles.getBySlug()`** - Fetch a complete article including full content
+
+All fetching is done server-side using Next.js Server Components for optimal performance and SEO.
+
+## Installation
+
+```bash
+npm install @content-next-v2/sdk
+```
+
+## Basic Setup
+
+```tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+```
+
+## In This Section
+
+Learn about different aspects of fetching articles:
+
+- **[Listing Articles](/docs/fetching-articles/listing)** - Fetch and display multiple articles with pagination
+- **[Single Article](/docs/fetching-articles/single-article)** - Get a complete article by its slug
+- **[Error Handling](/docs/fetching-articles/error-handling)** - Handle errors gracefully
+- **[Caching](/docs/fetching-articles/caching)** - Optimize performance with Next.js caching
+
+Let's start with listing articles! 👉 [Continue to Listing Articles](/docs/fetching-articles/listing)

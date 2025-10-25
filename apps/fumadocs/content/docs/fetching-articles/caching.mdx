@@ -1,0 +1,322 @@
+---
+title: Caching & Revalidation
+description: Optimize performance with Next.js caching strategies
+---
+
+# Caching & Revalidation
+
+Optimize your Content Next integration with Next.js caching and revalidation strategies.
+
+## Default Caching Behavior
+
+Next.js automatically caches server component data by default:
+
+```tsx
+// app/blog/page.tsx
+export default async function BlogPage() {
+  const { articles } = await client.articles.list({ limit: 10 });
+  // Data is cached indefinitely (static generation)
+  return <div>{/* ... */}</div>;
+}
+```
+
+This is perfect for blogs that don't update frequently!
+
+## Caching Strategies
+
+### 1. Static Generation (Default)
+
+Best for: Blogs with infrequent updates
+
+```tsx
+// app/blog/page.tsx
+export default async function BlogPage() {
+  const { articles } = await client.articles.list({ limit: 10 });
+  // Cached at build time
+  return <div>{/* ... */}</div>;
+}
+```
+
+**Pros:**
+
+- Fastest performance
+- No API calls on page load
+- Great for SEO
+
+**Cons:**
+
+- Content only updates on rebuild
+
+### 2. Time-Based Revalidation
+
+Best for: Blogs that update regularly (hourly, daily)
+
+```tsx
+// app/blog/page.tsx
+export const revalidate = 3600; // Revalidate every hour
+
+export default async function BlogPage() {
+  const { articles } = await client.articles.list({ limit: 10 });
+  return <div>{/* ... */}</div>;
+}
+```
+
+**Revalidation Intervals:**
+
+```tsx
+export const revalidate = 60; // 1 minute
+export const revalidate = 300; // 5 minutes
+export const revalidate = 3600; // 1 hour
+export const revalidate = 86400; // 24 hours
+```
+
+**Pros:**
+
+- Automatic updates
+- Still very fast
+- Good balance
+
+**Cons:**
+
+- Slight delay for new content
+
+### 3. Dynamic Rendering
+
+Best for: Real-time content, personalized pages
+
+```tsx
+// app/blog/page.tsx
+export const dynamic = "force-dynamic";
+
+export default async function BlogPage() {
+  const { articles } = await client.articles.list({ limit: 10 });
+  // Fetched on every request
+  return <div>{/* ... */}</div>;
+}
+```
+
+**Pros:**
+
+- Always up-to-date
+- No caching delays
+
+**Cons:**
+
+- Slower (API call on every request)
+- Higher API usage
+
+### 4. On-Demand Revalidation
+
+Best for: Update specific pages when content changes
+
+Create a revalidation endpoint:
+
+```tsx
+// app/api/revalidate/route.ts
+import { revalidatePath } from "next/cache";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function POST(request: NextRequest) {
+  const secret = request.nextUrl.searchParams.get("secret");
+
+  // Validate secret token
+  if (secret !== process.env.REVALIDATION_SECRET) {
+    return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
+  }
+
+  // Get the path to revalidate
+  const path = request.nextUrl.searchParams.get("path") || "/blog";
+
+  // Revalidate the path
+  revalidatePath(path);
+
+  return NextResponse.json({ revalidated: true, path });
+}
+```
+
+Call it when content changes:
+
+```bash
+curl -X POST "https://yourdomain.com/api/revalidate?secret=YOUR_SECRET&path=/blog"
+```
+
+**Pros:**
+
+- Instant updates
+- Still cached between updates
+- Efficient
+
+**Cons:**
+
+- Requires webhook or manual trigger
+
+## Recommended Strategies
+
+### For Blog Listing Pages
+
+**Option 1: Time-based (Recommended)**
+
+```tsx
+// app/blog/page.tsx
+export const revalidate = 3600; // Revalidate every hour
+
+export default async function BlogPage() {
+  const { articles } = await client.articles.list({ limit: 10 });
+  return <div>{/* ... */}</div>;
+}
+```
+
+### For Article Detail Pages
+
+**Option 1: Static with On-Demand Revalidation (Recommended)**
+
+```tsx
+// app/blog/[slug]/page.tsx
+export default async function ArticlePage({ params }) {
+  const article = await client.articles.getBySlug(params.slug);
+  // Cached until on-demand revalidation
+  return <div>{/* ... */}</div>;
+}
+```
+
+**Option 2: Time-based**
+
+```tsx
+// app/blog/[slug]/page.tsx
+export const revalidate = 86400; // Revalidate daily
+
+export default async function ArticlePage({ params }) {
+  const article = await client.articles.getBySlug(params.slug);
+  return <div>{/* ... */}</div>;
+}
+```
+
+## Per-Request Caching
+
+Control caching for individual fetch calls:
+
+```tsx
+// No caching
+const { articles } = await client.articles.list(
+  { limit: 10 },
+  { cache: "no-store" }
+);
+
+// Revalidate after 60 seconds
+const { articles } = await client.articles.list(
+  { limit: 10 },
+  { next: { revalidate: 60 } }
+);
+```
+
+Note: The Content Next SDK uses native `fetch` under the hood, so Next.js caching works automatically.
+
+## Cache Tags
+
+Use cache tags for granular control:
+
+```tsx
+// app/blog/[slug]/page.tsx
+export default async function ArticlePage({ params }) {
+  const article = await client.articles.getBySlug(params.slug);
+
+  // Tag this page's cache
+  return <div data-cache-tag={`article-${params.slug}`}>{/* ... */}</div>;
+}
+
+// Revalidate specific article
+import { revalidateTag } from "next/cache";
+revalidateTag(`article-${slug}`);
+```
+
+## Checking Cache Status
+
+In development, check the console for cache hits/misses:
+
+```bash
+# Terminal output
+○ (Static)   automatically generated as static HTML + JSON
+● (SSG)      automatically generated as static HTML + JSON (uses getStaticProps)
+λ (Dynamic)  server-rendered on demand
+```
+
+## Best Practices
+
+### 1. Choose the Right Strategy
+
+- **High-traffic blog**: Static or time-based revalidation
+- **News site**: Shorter revalidation (5-15 minutes)
+- **Personal blog**: Longer revalidation (1-24 hours)
+- **Real-time content**: Dynamic rendering
+
+### 2. Set Appropriate Revalidation Times
+
+```tsx
+// ❌ Too aggressive - unnecessary API calls
+export const revalidate = 10; // 10 seconds
+
+// ✅ Good balance for most blogs
+export const revalidate = 3600; // 1 hour
+
+// ✅ Good for stable content
+export const revalidate = 86400; // 24 hours
+```
+
+### 3. Use Different Strategies for Different Pages
+
+```tsx
+// Blog listing - revalidate frequently
+// app/blog/page.tsx
+export const revalidate = 1800; // 30 minutes
+
+// Article pages - revalidate less frequently
+// app/blog/[slug]/page.tsx
+export const revalidate = 86400; // 24 hours
+```
+
+### 4. Monitor API Usage
+
+Check your Content Next dashboard for API usage. If it's too high:
+
+- Increase revalidation intervals
+- Use static generation
+- Implement on-demand revalidation
+
+## Troubleshooting
+
+### Content Not Updating
+
+**Problem**: New articles don't appear on the site.
+
+**Solutions**:
+
+1. Check revalidation time - it might be too long
+2. Manually rebuild: `npm run build`
+3. Use on-demand revalidation
+4. Switch to shorter revalidation interval
+
+### Too Many API Calls
+
+**Problem**: API rate limits or high usage.
+
+**Solutions**:
+
+1. Increase revalidation interval
+2. Use static generation
+3. Cache aggressively
+
+### Stale Content
+
+**Problem**: Old content showing after updates.
+
+**Solutions**:
+
+1. Clear Next.js cache: `rm -rf .next`
+2. Trigger on-demand revalidation
+3. Rebuild the site
+
+## Next Steps
+
+- Learn more in the [Next.js documentation](https://nextjs.org/docs/app/building-your-application/caching)
+- Check the [API Reference](/docs/api-reference) for complete SDK documentation
+- Explore [error handling](/docs/fetching-articles/error-handling) strategies

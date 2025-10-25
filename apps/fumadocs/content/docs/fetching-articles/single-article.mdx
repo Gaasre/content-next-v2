@@ -1,0 +1,284 @@
+---
+title: Single Article
+description: Fetch a complete article by its slug
+---
+
+# Fetching a Single Article
+
+Use `articles.getBySlug()` to fetch a complete article including its full content.
+
+## Basic Usage
+
+```tsx
+// app/blog/[slug]/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  try {
+    const article = await client.articles.getBySlug(params.slug);
+
+    return (
+      <article>
+        <h1>{article.title}</h1>
+        {/* Content is Markdown - render with a Markdown library */}
+        <div className="prose">
+          {/* Install: npm install react-markdown */}
+          <pre>{article.content}</pre>
+        </div>
+      </article>
+    );
+  } catch (error) {
+    notFound();
+  }
+}
+```
+
+## Article Structure
+
+The full article includes all fields plus the `content`:
+
+```typescript
+interface Article {
+  id: string;
+  websiteId: string;
+  slug: string;
+  title: string;
+  description: string;
+  content: string; // Full HTML content
+  tags: string[];
+  status: "published";
+  publishedAt: string | null;
+  readTime: number; // Estimated reading time in minutes
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## Complete Example
+
+Here's a fully styled article page:
+
+```tsx
+// app/blog/[slug]/page.tsx
+import { ContentNextClient } from "@content-next-v2/sdk";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+
+const client = new ContentNextClient({
+  apiKey: process.env.CONTENT_API_KEY!,
+});
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  try {
+    const article = await client.articles.getBySlug(params.slug);
+
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <article>
+          {/* Header */}
+          <header className="mb-8 pb-8 border-b">
+            <Link
+              href="/blog"
+              className="text-blue-600 hover:underline mb-4 inline-block"
+            >
+              ← Back to Blog
+            </Link>
+
+            <h1 className="text-4xl font-bold mb-4">{article.title}</h1>
+
+            <p className="text-xl text-gray-600 mb-4">{article.description}</p>
+
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <time>
+                {new Date(article.publishedAt!).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </time>
+              <span>•</span>
+              <span>{article.readTime} min read</span>
+            </div>
+
+            {article.tags.length > 0 && (
+              <div className="flex gap-2 mt-4">
+                {article.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </header>
+
+          {/* Content - Markdown */}
+          <ReactMarkdown className="prose prose-lg max-w-none dark:prose-invert">
+            {article.content}
+          </ReactMarkdown>
+        </article>
+      </div>
+    );
+  } catch (error) {
+    notFound();
+  }
+}
+```
+
+## Generating Metadata
+
+Generate dynamic SEO metadata for your articles:
+
+```tsx
+// app/blog/[slug]/page.tsx
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  try {
+    const article = await client.articles.getBySlug(params.slug);
+
+    return {
+      title: article.title,
+      description: article.description,
+      openGraph: {
+        title: article.title,
+        description: article.description,
+        type: "article",
+        publishedTime: article.publishedAt || undefined,
+        tags: article.tags,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: article.title,
+        description: article.description,
+      },
+    };
+  } catch {
+    return {
+      title: "Article Not Found",
+    };
+  }
+}
+```
+
+## Content Rendering
+
+The article content is **Markdown**. You need to render it with a Markdown library.
+
+### Using react-markdown (Recommended)
+
+Install the package:
+
+```bash
+npm install react-markdown
+```
+
+Render the Markdown:
+
+```tsx
+import ReactMarkdown from "react-markdown";
+
+<ReactMarkdown className="prose prose-lg max-w-none">
+  {article.content}
+</ReactMarkdown>;
+```
+
+### Using @tailwindcss/typography for Styling
+
+For beautiful typography styling:
+
+```bash
+npm install @tailwindcss/typography
+```
+
+Add to your `tailwind.config.js`:
+
+```js
+module.exports = {
+  plugins: [require("@tailwindcss/typography")],
+};
+```
+
+Then use the `prose` classes:
+
+```tsx
+import ReactMarkdown from "react-markdown";
+
+<ReactMarkdown className="prose prose-lg max-w-none dark:prose-invert">
+  {article.content}
+</ReactMarkdown>;
+```
+
+### Alternative: Using next-mdx-remote
+
+For more features (components in MDX):
+
+```bash
+npm install next-mdx-remote
+```
+
+```tsx
+import { MDXRemote } from "next-mdx-remote/rsc";
+
+<MDXRemote source={article.content} />;
+```
+
+## Best Practices
+
+### 1. Always Handle Errors
+
+```tsx
+try {
+  const article = await client.articles.getBySlug(slug);
+} catch (error) {
+  notFound();
+}
+```
+
+### 2. Use TypeScript
+
+```tsx
+import type { Article } from "@content-next-v2/sdk";
+
+const article: Article = await client.articles.getBySlug(slug);
+```
+
+### 3. Generate Metadata
+
+Always generate metadata for SEO:
+
+```tsx
+export async function generateMetadata({ params }) {
+  // ...
+}
+```
+
+### 4. Show Related Information
+
+Display publish date, read time, and tags for better UX.
+
+## Next Steps
+
+- Learn about [error handling](/docs/fetching-articles/error-handling) strategies
+- Optimize with [caching](/docs/fetching-articles/caching)
+- Check the [API Reference](/docs/api-reference) for more details

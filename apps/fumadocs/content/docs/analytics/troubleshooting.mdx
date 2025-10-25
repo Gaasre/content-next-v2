@@ -1,0 +1,296 @@
+---
+title: Troubleshooting
+description: Test and debug your analytics setup
+---
+
+# Troubleshooting Analytics
+
+Learn how to test your analytics setup and fix common issues.
+
+## Testing Analytics
+
+### 1. Check Browser Console
+
+Open your browser's developer console when viewing an article:
+
+**What to Look For:**
+
+- No errors from the analytics script
+- Network requests to `api.content-next.com/rpc/analytics/trackView`
+- Network requests to `api.content-next.com/rpc/analytics/trackRead` when leaving the page
+
+**How to Check:**
+
+1. Open DevTools (F12 or Cmd+Option+I)
+2. Go to the **Console** tab
+3. Visit an article page
+4. Look for any red error messages
+
+### 2. Check Network Tab
+
+Monitor network requests to verify tracking:
+
+**Steps:**
+
+1. Open DevTools → **Network** tab
+2. Filter by "analytics" or "api.content-next.com"
+3. Visit an article page
+4. You should see:
+   - `POST /rpc/analytics/trackView` - when page loads
+   - `POST /rpc/analytics/trackRead` - when leaving page
+
+### 3. Test in Development
+
+Analytics work in development mode (`localhost`):
+
+**Test Procedure:**
+
+1. Start your dev server: `npm run dev`
+2. Visit an article: `http://localhost:3000/blog/my-article`
+3. Refresh the page → View count should increase
+4. Scroll down the page → Scroll depth tracked
+5. Stay on the page for a few seconds → Read time recorded
+6. Navigate away or close the tab → Data sent
+
+### 4. View in Dashboard
+
+Check your Content Next dashboard:
+
+1. Go to [Content Next dashboard](https://content-next.com/dashboard)
+2. Select your website project
+3. Click on an article
+4. View analytics data (may take a few seconds to appear)
+
+## Common Issues
+
+### Analytics Not Tracking
+
+**Symptoms:**
+
+- No data appearing in dashboard
+- No network requests in DevTools
+
+**Solutions:**
+
+#### 1. Check API Key
+
+```tsx
+// Make sure API key is set
+console.log(process.env.CONTENT_API_KEY); // Should print your key
+
+// Verify it's passed to the script
+<script data-api-key={process.env.CONTENT_API_KEY} ... />
+```
+
+#### 2. Verify Article is Published
+
+Only **published** articles are tracked. Check your Content Next dashboard:
+
+- Article status should be "Published"
+- Not "Draft" or "Scheduled"
+
+#### 3. Check Script Loading
+
+Look in the **Network** tab for `analytics.js`:
+
+- Should load successfully (200 status)
+- If 404, check the `src` URL
+
+#### 4. Verify Blog Path
+
+If using `data-blog-path`, ensure it matches your URL structure:
+
+```tsx
+// URL: /blog/my-article
+<script data-blog-path="/blog" ... />
+
+// URL: /articles/my-article
+<script data-blog-path="/articles" ... />
+```
+
+### Wrong Article Being Tracked
+
+**Symptoms:**
+
+- Analytics showing for different article
+- Slug detection incorrect
+
+**Solutions:**
+
+#### 1. Set Blog Path
+
+```tsx
+// ✅ Correct - explicitly set blog path
+<script data-blog-path="/blog" ... />
+
+// ❌ May detect wrong slug without blog path
+<script ... />
+```
+
+#### 2. Check URL Structure
+
+Ensure your URLs match the pattern:
+
+- With blog path: `/blog/{slug}`
+- Without: `/{slug}`
+
+### Data Not Appearing in Dashboard
+
+**Symptoms:**
+
+- Network requests succeed
+- But no data in dashboard
+
+**Solutions:**
+
+#### 1. Wait a Few Minutes
+
+Data processing can take time:
+
+- Wait 1-2 minutes
+- Refresh your dashboard
+- Check again
+
+#### 2. Verify Correct Website
+
+Make sure you're looking at the right website project in your dashboard.
+
+#### 3. Check Date Range
+
+If viewing analytics with a date filter, ensure the current date is included.
+
+### High API Usage
+
+**Symptoms:**
+
+- Many API calls in Network tab
+- Rate limit warnings
+
+**Solutions:**
+
+#### 1. Check for Duplicate Scripts
+
+```tsx
+// ❌ Bad - script loaded twice
+<head>
+  <script data-api-key={...} src="..." />
+  <script data-api-key={...} src="..." />
+</head>
+```
+
+#### 2. Verify Script Location
+
+Only load the script once in your root layout:
+
+```tsx
+// ✅ Good - in root layout only
+// app/layout.tsx
+<script defer data-api-key={...} ... />
+```
+
+### Cookie Issues
+
+**Symptoms:**
+
+- Every visit counted as new visitor
+- Visitor ID regenerates frequently
+
+**Solutions:**
+
+#### 1. Check Cookie Settings
+
+The `cn_visitor_id` cookie should:
+
+- Be set automatically
+- Last for 1 year
+- Be accessible on all your domain's pages
+
+#### 2. Verify Domain
+
+If using subdomains, cookies might not persist. Contact support for help.
+
+## Debugging Tools
+
+### Check Script Attributes
+
+```tsx
+// Log attributes in console
+<script
+  defer
+  data-api-key={process.env.CONTENT_API_KEY}
+  data-blog-path="/blog"
+  src="https://api.content-next.com/js/analytics.js"
+  onLoad={() => console.log("Analytics loaded")}
+  onError={() => console.error("Analytics failed to load")}
+/>
+```
+
+### Monitor Events
+
+Check the browser console for analytics events (in development mode):
+
+```javascript
+// The script logs events in development
+// Check console for:
+// "ContentNext: View tracked for article: my-article"
+// "ContentNext: Read tracked - depth: 75%, time: 120s"
+```
+
+## Performance Impact
+
+The analytics script is designed to be lightweight:
+
+- **Size**: ~2.8KB minified
+- **Loading**: Deferred (doesn't block page rendering)
+- **Tracking**: Uses efficient `sendBeacon()` API
+- **Impact**: Minimal to none on page performance
+
+## Best Practices for Testing
+
+### 1. Test in Incognito/Private Mode
+
+```bash
+# Simulates a new visitor
+# Useful for testing visitor ID generation
+```
+
+### 2. Clear Cookies Between Tests
+
+```bash
+# Delete `cn_visitor_id` cookie
+# Test visitor tracking fresh
+```
+
+### 3. Use Multiple Browsers
+
+Test across different browsers:
+
+- Chrome
+- Firefox
+- Safari
+- Edge
+
+### 4. Test on Mobile
+
+Verify tracking works on mobile devices:
+
+- iOS Safari
+- Chrome Mobile
+- Samsung Internet
+
+## Getting Help
+
+If you're still experiencing issues:
+
+1. **Check our documentation**: Review the [installation](/docs/analytics/installation) and [configuration](/docs/analytics/configuration) guides
+2. **Contact support**: Email support@content-next.com with:
+   - Your website URL
+   - Browser and OS
+   - Screenshot of console errors
+   - Description of the issue
+
+## Next Steps
+
+- Learn more about [fetching articles](/docs/fetching-articles)
+- Check the complete [API Reference](/docs/api-reference)
+- Return to [Quick Start](/docs/quick-start)
