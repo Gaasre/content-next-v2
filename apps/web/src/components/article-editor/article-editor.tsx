@@ -4,7 +4,6 @@ import "./tiptap.css";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Markdown } from "@tiptap/markdown";
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./toolbars/editor-toolbar";
 
@@ -17,6 +16,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
+import { CustomImage } from "./extensions/image";
 
 interface ArticleEditorProps {
   content: string;
@@ -24,6 +24,7 @@ interface ArticleEditorProps {
   editable?: boolean;
   className?: string;
   isInvalid?: boolean;
+  articleId?: string;
 }
 
 export function ArticleEditor({
@@ -32,6 +33,7 @@ export function ArticleEditor({
   isInvalid = false,
   editable = true,
   className,
+  articleId,
 }: ArticleEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -81,24 +83,20 @@ export function ArticleEditor({
         multicolor: true,
       }),
       Typography,
-      Markdown,
+      CustomImage.configure({
+        articleId,
+      }),
     ],
     content,
-    contentType: "markdown",
     editable,
     editorProps: {
       attributes: {
-        class: cn(
-          "prose prose-sm dark:prose-invert max-w-none",
-          "focus:outline-none",
-          "min-h-[400px]",
-          className
-        ),
+        class: cn("editor-content", className),
       },
     },
     onUpdate: ({ editor }) => {
-      const markdown = editor.getMarkdown();
-      onUpdate?.(markdown);
+      const html = editor.getHTML();
+      onUpdate?.(html);
     },
   });
 

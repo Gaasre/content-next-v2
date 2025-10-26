@@ -25,6 +25,7 @@ export {
   not,
   count,
   sql,
+  inArray,
 } from "drizzle-orm";
 
 // Re-export ID generation utilities

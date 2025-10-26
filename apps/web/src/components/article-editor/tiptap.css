@@ -90,3 +90,105 @@
   --editor-border-default: hsl(240 5% 26%);
   --editor-border-strong: hsl(240 5% 64.9%);
 }
+
+/* Editor Container */
+.editor-content {
+  outline: none;
+  min-height: 400px;
+}
+
+/* Additional editor-specific styles that extend index.css */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(0 0% 50% / 0.5);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror h1.is-editor-empty:first-child::before,
+.ProseMirror h2.is-editor-empty:first-child::before,
+.ProseMirror h3.is-editor-empty:first-child::before,
+.ProseMirror h4.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(0 0% 50% / 0.5);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Typography extensions not in index.css */
+.ProseMirror h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75;
+}
+
+.ProseMirror h1 {
+  font-size: 1.875rem;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25rem;
+}
+
+/* Underline support */
+.ProseMirror u {
+  text-decoration: underline;
+}
+
+/* Subscript and Superscript */
+.ProseMirror sub,
+.ProseMirror sup {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+}
+
+.ProseMirror sup {
+  vertical-align: super;
+}
+
+.ProseMirror sub {
+  vertical-align: sub;
+}
+
+/* Image styling */
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* List alignment */
+.ProseMirror ul[data-align="center"],
+.ProseMirror ol[data-align="center"] {
+  text-align: center;
+  list-style-position: inside;
+}
+
+.ProseMirror ul[data-align="right"],
+.ProseMirror ol[data-align="right"] {
+  text-align: right;
+  list-style-position: inside;
+}
+
+/* Text alignment for paragraphs and headings */
+.ProseMirror p[style*="text-align: center"],
+.ProseMirror h1[style*="text-align: center"],
+.ProseMirror h2[style*="text-align: center"],
+.ProseMirror h3[style*="text-align: center"],
+.ProseMirror h4[style*="text-align: center"] {
+  text-align: center;
+}
+
+.ProseMirror p[style*="text-align: right"],
+.ProseMirror h1[style*="text-align: right"],
+.ProseMirror h2[style*="text-align: right"],
+.ProseMirror h3[style*="text-align: right"],
+.ProseMirror h4[style*="text-align: right"] {
+  text-align: right;
+}

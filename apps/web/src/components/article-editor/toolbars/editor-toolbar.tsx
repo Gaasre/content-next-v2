@@ -17,10 +17,10 @@ import { BulletListToolbar } from "./bullet-list";
 import { OrderedListToolbar } from "./ordered-list";
 import { HorizontalRuleToolbar } from "./horizontal-rule";
 import { AlignmentTooolbar } from "./alignment";
-import { ImagePlaceholderToolbar } from "./image-placeholder-toolbar";
 import { ColorHighlightToolbar } from "./color-and-highlight";
 import { SearchAndReplaceToolbar } from "./search-and-replace-toolbar";
 import { CodeBlockToolbar } from "./code-block";
+import { ImageToolbar } from "./image-toolbar";
 
 export const EditorToolbar = ({ editor }: { editor: Editor }) => {
   return (
@@ -33,14 +33,12 @@ export const EditorToolbar = ({ editor }: { editor: Editor }) => {
                 {/* History Group */}
                 <UndoToolbar />
                 <RedoToolbar />
-                <Separator orientation="vertical" className="mx-1 h-7" />
 
                 {/* Text Structure Group */}
                 <HeadingsToolbar />
                 <BlockquoteToolbar />
                 <CodeToolbar />
                 <CodeBlockToolbar />
-                <Separator orientation="vertical" className="mx-1 h-7" />
 
                 {/* Basic Formatting Group */}
                 <BoldToolbar />
@@ -48,20 +46,18 @@ export const EditorToolbar = ({ editor }: { editor: Editor }) => {
                 <UnderlineToolbar />
                 <StrikeThroughToolbar />
                 <LinkToolbar />
-                <Separator orientation="vertical" className="mx-1 h-7" />
 
                 {/* Lists & Structure Group */}
                 <BulletListToolbar />
                 <OrderedListToolbar />
                 <HorizontalRuleToolbar />
-                {/* <Separator orientation="vertical" className="mx-1 h-7" /> */}
 
                 {/* Alignment Group */}
                 {/* <AlignmentTooolbar />
                 <Separator orientation="vertical" className="mx-1 h-7" /> */}
 
                 {/* Media & Styling Group */}
-                {/* <ImagePlaceholderToolbar /> */}
+                <ImageToolbar />
                 {/* <ColorHighlightToolbar />
                 <Separator orientation="vertical" className="mx-1 h-7" /> */}
 

@@ -18,6 +18,7 @@ import { useWebsite } from "@/contexts/website-context";
 import { toast } from "sonner";
 import { generateSlug } from "@/lib/slug";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
+import { CoverImageField } from "./cover-image-field";
 import z from "zod";
 import { useForm } from "@tanstack/react-form";
 
@@ -34,6 +35,7 @@ const newArticleSchema = z.object({
     }),
   scheduledFor: z.iso.datetime().nullable(),
   status: z.enum(["active", "draft"]),
+  coverImageFile: z.instanceof(File).nullable(),
 });
 
 interface NewArticleFormProps {
@@ -44,23 +46,13 @@ export function NewArticleForm({ onSuccess }: NewArticleFormProps) {
   const { currentWebsite } = useWebsite();
   const [tagInput, setTagInput] = useState("");
 
-  const mutation = useMutation(
-    orpc.article.create.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.article.list.key({
-            input: { websiteId: currentWebsite?.id },
-            type: "infinite",
-          }),
-        });
+  const createMutation = useMutation(orpc.article.create.mutationOptions());
 
-        form.reset();
-
-        toast.success("Article created successfully!");
-        onSuccess();
-      },
-    })
+  const uploadMutation = useMutation(
+    orpc.article.generateImageUploadUrl.mutationOptions()
   );
+
+  const isPending = uploadMutation.isPending || createMutation.isPending;
 
   const form = useForm({
     defaultValues: {
@@ -71,6 +63,7 @@ export function NewArticleForm({ onSuccess }: NewArticleFormProps) {
       tags: [] as string[],
       scheduledFor: null as string | null,
       status: "active",
+      coverImageFile: null as File | null,
     },
     validators: {
       onChange: newArticleSchema,
@@ -81,32 +74,89 @@ export function NewArticleForm({ onSuccess }: NewArticleFormProps) {
         return;
       }
 
-      mutation.mutate({
-        websiteId: currentWebsite.id,
-        slug: value.slug,
-        title: value.title,
-        description: value.description,
-        content: value.content,
-        tags: value.tags,
-        status: value.scheduledFor
-          ? "scheduled"
-          : value.status === "active"
-          ? "published"
-          : "draft",
-        scheduledFor: value.scheduledFor
-          ? new Date(value.scheduledFor)
-          : undefined,
-      });
+      try {
+        // First create the article
+        const articleData = {
+          websiteId: currentWebsite.id,
+          slug: value.slug,
+          title: value.title,
+          description: value.description,
+          content: value.content,
+          tags: value.tags,
+          status: value.scheduledFor
+            ? ("scheduled" as const)
+            : value.status === "active"
+            ? ("published" as const)
+            : ("draft" as const),
+          scheduledFor: value.scheduledFor
+            ? new Date(value.scheduledFor)
+            : undefined,
+        };
+
+        // Create article first
+        const newArticle = await createMutation.mutateAsync(articleData);
+
+        // If there's a cover image, upload it
+        if (value.coverImageFile) {
+          const { presignedUrl } = await uploadMutation.mutateAsync({
+            articleId: newArticle.id,
+            imageType: "cover",
+            contentType: value.coverImageFile.type,
+          });
+
+          // Upload to S3
+          const uploadResponse = await fetch(presignedUrl, {
+            method: "PUT",
+            body: value.coverImageFile,
+            headers: {
+              "Content-Type": value.coverImageFile.type,
+            },
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload cover image");
+          }
+        }
+
+        // Invalidate queries and show success
+        queryClient.invalidateQueries({
+          queryKey: orpc.article.list.key({
+            input: { websiteId: currentWebsite.id },
+            type: "infinite",
+          }),
+        });
+
+        form.reset();
+        toast.success("Article created successfully!");
+        onSuccess();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create article"
+        );
+      }
     },
   });
 
   return (
     <form>
       <FieldGroup>
-        {/* Form - Title, Slug and Description */}
+        {/* Form - Cover Image, Title, Slug and Description */}
         <div className="px-4 pb-2 pt-3 space-y-4 relative z-10">
-          {/* Title Field */}
+          {/* Cover Image Field */}
+          <form.Field
+            name="coverImageFile"
+            children={(field) => (
+              <CoverImageField
+                value={field.state.value}
+                onChange={field.handleChange}
+                shouldRemoveExisting={false}
+                onRemoveExistingChange={() => {}}
+                disabled={isPending}
+              />
+            )}
+          />
 
+          {/* Title Field */}
           <div>
             <form.Field
               name="title"
@@ -323,6 +373,7 @@ export function NewArticleForm({ onSuccess }: NewArticleFormProps) {
                     onUpdate={field.handleChange}
                     editable={true}
                     isInvalid={isInvalid}
+                    articleId={undefined}
                   />
                   {isInvalid && <FieldError errors={field.state.meta.errors} />}
                 </Field>
@@ -480,8 +531,8 @@ export function NewArticleForm({ onSuccess }: NewArticleFormProps) {
           <form.Subscribe
             selector={(state) => [state.isValid]}
             children={([isValid]) => {
-              const isDisabled = !isValid || mutation.isPending;
-              console.log(isDisabled, isValid, mutation.isPending);
+              const isDisabled = !isValid || isPending;
+              console.log(isDisabled, isValid, isPending);
               return (
                 <button
                   type="button"
@@ -496,7 +547,7 @@ export function NewArticleForm({ onSuccess }: NewArticleFormProps) {
                       : "bg-primary/20 text-primary focus-visible:ring-primary/50"
                   )}
                 >
-                  {mutation.isPending ? (
+                  {isPending ? (
                     <>
                       <Loader2 className="size-2.5 animate-spin" />
                       <span>Publishing...</span>

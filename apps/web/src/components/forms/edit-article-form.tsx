@@ -18,6 +18,7 @@ import { useWebsite } from "@/contexts/website-context";
 import { toast } from "sonner";
 import { generateSlug } from "@/lib/slug";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
+import { CoverImageField } from "./cover-image-field";
 import z from "zod";
 import { useForm } from "@tanstack/react-form";
 
@@ -34,6 +35,7 @@ const editArticleSchema = z.object({
     }),
   scheduledFor: z.iso.datetime().nullable(),
   status: z.enum(["active", "draft"]),
+  coverImageFile: z.instanceof(File).nullable(),
 });
 
 interface Article {
@@ -51,6 +53,11 @@ interface Article {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+  coverImage?: {
+    id: string;
+    url: string;
+    key: string;
+  } | null;
 }
 
 interface EditArticleFormProps {
@@ -61,25 +68,22 @@ interface EditArticleFormProps {
 export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
   const { currentWebsite } = useWebsite();
   const [tagInput, setTagInput] = useState("");
+  const [shouldRemoveCoverImage, setShouldRemoveCoverImage] = useState(false);
 
-  const mutation = useMutation(
-    orpc.article.update.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.article.list.key({
-            input: { websiteId: currentWebsite?.id },
-            type: "infinite",
-          }),
-        });
+  const updateMutation = useMutation(orpc.article.update.mutationOptions());
 
-        toast.success("Article updated successfully!");
-        onSuccess();
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    })
+  const uploadMutation = useMutation(
+    orpc.article.generateImageUploadUrl.mutationOptions()
   );
+
+  const deleteImageMutation = useMutation(
+    orpc.article.deleteImage.mutationOptions()
+  );
+
+  const isPending =
+    updateMutation.isPending ||
+    uploadMutation.isPending ||
+    deleteImageMutation.isPending;
 
   // Determine initial status and scheduledFor based on article status
   const getInitialStatus = () => {
@@ -105,6 +109,7 @@ export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
       tags: article.tags,
       scheduledFor: getInitialScheduledFor(),
       status: getInitialStatus(),
+      coverImageFile: null as File | null,
     },
     validators: {
       onChange: editArticleSchema,
@@ -115,22 +120,68 @@ export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
         return;
       }
 
-      mutation.mutate({
-        id: article.id,
-        slug: value.slug,
-        title: value.title,
-        description: value.description,
-        content: value.content,
-        tags: value.tags,
-        status: value.scheduledFor
-          ? "scheduled"
-          : value.status === "active"
-          ? "published"
-          : "draft",
-        scheduledFor: value.scheduledFor
-          ? new Date(value.scheduledFor)
-          : undefined,
-      });
+      try {
+        // Delete existing cover image if marked for removal
+        if (shouldRemoveCoverImage && article.coverImage?.id) {
+          await deleteImageMutation.mutateAsync({
+            imageId: article.coverImage.id,
+          });
+        }
+
+        // Update article
+        await updateMutation.mutateAsync({
+          id: article.id,
+          slug: value.slug,
+          title: value.title,
+          description: value.description,
+          content: value.content,
+          tags: value.tags,
+          status: value.scheduledFor
+            ? ("scheduled" as const)
+            : value.status === "active"
+            ? ("published" as const)
+            : ("draft" as const),
+          scheduledFor: value.scheduledFor
+            ? new Date(value.scheduledFor)
+            : undefined,
+        });
+
+        // Upload new cover image if provided
+        if (value.coverImageFile) {
+          const { presignedUrl } = await uploadMutation.mutateAsync({
+            articleId: article.id,
+            imageType: "cover",
+            contentType: value.coverImageFile.type,
+          });
+
+          const uploadResponse = await fetch(presignedUrl, {
+            method: "PUT",
+            body: value.coverImageFile,
+            headers: {
+              "Content-Type": value.coverImageFile.type,
+            },
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to upload cover image");
+          }
+        }
+
+        // Invalidate queries and show success
+        queryClient.invalidateQueries({
+          queryKey: orpc.article.list.key({
+            input: { websiteId: currentWebsite.id },
+            type: "infinite",
+          }),
+        });
+
+        toast.success("Article updated successfully!");
+        onSuccess();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update article"
+        );
+      }
     },
   });
 
@@ -143,10 +194,24 @@ export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
   return (
     <form>
       <FieldGroup>
-        {/* Form - Title, Slug and Description */}
+        {/* Form - Cover Image, Title, Slug and Description */}
         <div className="px-4 pb-2 pt-3 space-y-4 relative z-10">
-          {/* Title Field */}
+          {/* Cover Image Field */}
+          <form.Field
+            name="coverImageFile"
+            children={(field) => (
+              <CoverImageField
+                value={field.state.value}
+                onChange={field.handleChange}
+                existingImageUrl={article.coverImage?.url}
+                shouldRemoveExisting={shouldRemoveCoverImage}
+                onRemoveExistingChange={setShouldRemoveCoverImage}
+                disabled={isPending}
+              />
+            )}
+          />
 
+          {/* Title Field */}
           <div>
             <form.Field
               name="title"
@@ -363,6 +428,7 @@ export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
                     onUpdate={field.handleChange}
                     editable={true}
                     isInvalid={isInvalid}
+                    articleId={article.id}
                   />
                   {isInvalid && <FieldError errors={field.state.meta.errors} />}
                 </Field>
@@ -521,7 +587,7 @@ export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
           <form.Subscribe
             selector={(state) => [state.isValid]}
             children={([isValid]) => {
-              const isDisabled = !isValid || mutation.isPending;
+              const isDisabled = !isValid || isPending;
               return (
                 <button
                   type="button"
@@ -536,7 +602,7 @@ export function EditArticleForm({ article, onSuccess }: EditArticleFormProps) {
                       : "bg-primary/20 text-primary focus-visible:ring-primary/50"
                   )}
                 >
-                  {mutation.isPending ? (
+                  {isPending ? (
                     <>
                       <Loader2 className="size-2.5 animate-spin" />
                       <span>Updating...</span>

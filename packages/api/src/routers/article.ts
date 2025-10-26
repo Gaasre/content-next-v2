@@ -13,6 +13,7 @@ import {
   db,
   article,
   website,
+  articleImage,
   generateId,
   articleStatsDaily,
   sql,
@@ -23,6 +24,12 @@ import {
   cancelScheduledArticle,
   rescheduleArticlePublish,
 } from "@content-next-v2/scheduler";
+import {
+  generateUploadPresignedUrl,
+  deleteObject,
+  deleteObjects,
+  getImageUrl,
+} from "@content-next-v2/s3";
 
 const createArticleSchema = z.object({
   websiteId: z.string(),
@@ -78,6 +85,16 @@ const publicListSchema = z.object({
 
 const publicGetBySlugSchema = z.object({
   slug: z.string(),
+});
+
+const generateImageUploadUrlSchema = z.object({
+  articleId: z.string(),
+  imageType: z.enum(["cover", "content"]),
+  contentType: z.string(),
+});
+
+const deleteImageSchema = z.object({
+  imageId: z.string(),
 });
 
 function calculateReadTime(content: string): number {
@@ -200,8 +217,35 @@ export const articleRouter = {
         highlyRatedCount,
       ] = await Promise.all([
         db
-          .select()
+          .select({
+            id: article.id,
+            websiteId: article.websiteId,
+            slug: article.slug,
+            title: article.title,
+            description: article.description,
+            content: article.content,
+            tags: article.tags,
+            status: article.status,
+            scheduledFor: article.scheduledFor,
+            publishedAt: article.publishedAt,
+            readTime: article.readTime,
+            createdAt: article.createdAt,
+            updatedAt: article.updatedAt,
+            deletedAt: article.deletedAt,
+            coverImage: {
+              id: articleImage.id,
+              url: articleImage.url,
+              key: articleImage.key,
+            },
+          })
           .from(article)
+          .leftJoin(
+            articleImage,
+            and(
+              eq(article.id, articleImage.articleId),
+              eq(articleImage.type, "cover")
+            )
+          )
           .where(and(...articleConditions))
           .orderBy(
             // First: Drafts at top (0), then timeline (1)
@@ -404,6 +448,15 @@ export const articleRouter = {
           ...(input.scheduledFor !== undefined && {
             scheduledFor: input.scheduledFor,
           }),
+          // Set publishedAt when status changes to "published"
+          ...(input.status === "published" &&
+            !existing.article.publishedAt && {
+              publishedAt: new Date(),
+            }),
+          // Clear scheduledFor when status changes to "published"
+          ...(input.status === "published" && {
+            scheduledFor: null,
+          }),
           readTime,
           updatedAt: new Date(),
         })
@@ -437,6 +490,18 @@ export const articleRouter = {
       // Cancel scheduled job if article is scheduled
       if (existing.article.status === "scheduled") {
         await cancelScheduledArticle(input.id);
+      }
+
+      // Get all images for this article
+      const images = await db
+        .select()
+        .from(articleImage)
+        .where(eq(articleImage.articleId, input.id));
+
+      // Delete all images from S3
+      if (images.length > 0) {
+        const imageKeys = images.map((img) => img.key);
+        await deleteObjects(imageKeys);
       }
 
       await db
@@ -543,8 +608,16 @@ export const articleRouter = {
             publishedAt: article.publishedAt,
             createdAt: article.createdAt,
             updatedAt: article.updatedAt,
+            coverImage: articleImage.url,
           })
           .from(article)
+          .leftJoin(
+            articleImage,
+            and(
+              eq(article.id, articleImage.articleId),
+              eq(articleImage.type, "cover")
+            )
+          )
           .where(
             and(
               eq(article.websiteId, context.websiteId),
@@ -567,8 +640,31 @@ export const articleRouter = {
       .input(publicGetBySlugSchema)
       .handler(async ({ context, input }) => {
         const [result] = await db
-          .select()
+          .select({
+            id: article.id,
+            websiteId: article.websiteId,
+            slug: article.slug,
+            title: article.title,
+            description: article.description,
+            content: article.content,
+            tags: article.tags,
+            status: article.status,
+            scheduledFor: article.scheduledFor,
+            publishedAt: article.publishedAt,
+            readTime: article.readTime,
+            createdAt: article.createdAt,
+            updatedAt: article.updatedAt,
+            deletedAt: article.deletedAt,
+            coverImage: articleImage.url,
+          })
           .from(article)
+          .leftJoin(
+            articleImage,
+            and(
+              eq(article.id, articleImage.articleId),
+              eq(articleImage.type, "cover")
+            )
+          )
           .where(
             and(
               eq(article.websiteId, context.websiteId),
@@ -585,4 +681,108 @@ export const articleRouter = {
         return result;
       }),
   },
+
+  generateImageUploadUrl: protectedProcedure
+    .input(generateImageUploadUrlSchema)
+    .handler(async ({ context, input }) => {
+      const userId = context.session.user.id;
+
+      // Verify article belongs to user
+      const [existing] = await db
+        .select()
+        .from(article)
+        .innerJoin(website, eq(article.websiteId, website.id))
+        .where(
+          and(
+            eq(article.id, input.articleId),
+            eq(website.userId, userId),
+            isNull(article.deletedAt)
+          )
+        );
+
+      if (!existing) {
+        throw new ORPCError("NOT_FOUND");
+      }
+
+      // If uploading a cover image and article already has one, delete the old one
+      if (input.imageType === "cover") {
+        const [oldCoverImage] = await db
+          .select()
+          .from(articleImage)
+          .where(
+            and(
+              eq(articleImage.articleId, input.articleId),
+              eq(articleImage.type, "cover")
+            )
+          );
+
+        if (oldCoverImage) {
+          await deleteObject(oldCoverImage.key);
+          await db
+            .delete(articleImage)
+            .where(eq(articleImage.id, oldCoverImage.id));
+        }
+      }
+
+      const imageId = generateId();
+      const s3Key = `${existing.article.websiteId}/${imageId}`;
+      const imageUrl = getImageUrl(s3Key);
+
+      // Generate presigned URL
+      const presignedUrl = await generateUploadPresignedUrl(
+        s3Key,
+        input.contentType
+      );
+
+      // Create article image record
+      const [newImage] = await db
+        .insert(articleImage)
+        .values({
+          id: imageId,
+          articleId: input.articleId,
+          key: s3Key,
+          url: imageUrl,
+          type: input.imageType,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return {
+        presignedUrl,
+        image: newImage,
+      };
+    }),
+
+  deleteImage: protectedProcedure
+    .input(deleteImageSchema)
+    .handler(async ({ context, input }) => {
+      const userId = context.session.user.id;
+
+      // Verify image belongs to user's article
+      const [existing] = await db
+        .select()
+        .from(articleImage)
+        .innerJoin(article, eq(articleImage.articleId, article.id))
+        .innerJoin(website, eq(article.websiteId, website.id))
+        .where(
+          and(
+            eq(articleImage.id, input.imageId),
+            eq(website.userId, userId),
+            isNull(article.deletedAt)
+          )
+        );
+
+      if (!existing) {
+        throw new ORPCError("NOT_FOUND");
+      }
+
+      // Delete from S3
+      await deleteObject(existing.article_image.key);
+
+      // Delete from database
+      await db.delete(articleImage).where(eq(articleImage.id, input.imageId));
+
+      return { success: true };
+    }),
 };

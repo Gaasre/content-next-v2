@@ -11,7 +11,7 @@ export function HeroSection() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-foreground via-foreground to-foreground/80 bg-clip-text">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-linear-to-br from-foreground via-foreground to-foreground/80 bg-clip-text">
           Ship content in under a minute
         </h1>
         <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-[500px]">

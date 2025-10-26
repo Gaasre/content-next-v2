@@ -28,6 +28,11 @@ interface Article {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+  coverImage?: {
+    id: string;
+    url: string;
+    key: string;
+  } | null;
 }
 
 interface TimelineItemProps {
@@ -116,7 +121,7 @@ export function TimelineItem({ article }: TimelineItemProps) {
         {/* Gradient overlay on hover */}
         <div
           className={cn(
-            "absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 pointer-events-none",
+            "absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 pointer-events-none",
             isHovered &&
               !isDeactivated &&
               !isScheduled &&
@@ -127,12 +132,12 @@ export function TimelineItem({ article }: TimelineItemProps) {
 
         {/* Trending glow effect */}
         {isTrending && !isExpanded && (
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-red-500/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-br from-orange-500/5 via-red-500/5 to-transparent pointer-events-none" />
         )}
 
         {/* High Performer glow effect */}
         {isHighPerformer && !isExpanded && (
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-green-500/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-green-500/5 to-transparent pointer-events-none" />
         )}
 
         {/* Compact 2-line layout - clickable when not expanded */}
@@ -140,66 +145,83 @@ export function TimelineItem({ article }: TimelineItemProps) {
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="w-full text-left p-3 space-y-2 relative z-10 cursor-pointer group/card"
+            className="w-full text-left relative z-10 cursor-pointer group/card"
           >
-            {/* Line 1: Title and Tags */}
-            <div className="flex items-center gap-2">
-              {/* Status dot indicator - subtle and non-intrusive */}
-              {!isScheduled && !isExpanded && (
-                <div
+            {/* Cover Image */}
+            {article.coverImage && (
+              <div className="relative w-full aspect-21/9 overflow-hidden rounded-t-lg bg-muted">
+                <img
+                  src={article.coverImage.url}
+                  alt=""
                   className={cn(
-                    "size-2 rounded-full shrink-0 transition-all",
-                    isDeactivated
-                      ? "bg-muted-foreground/40"
-                      : "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+                    "w-full h-full object-cover object-center transition-all duration-300",
+                    isDeactivated && "opacity-40 grayscale",
+                    !isDeactivated && "group-hover/card:scale-105"
                   )}
                 />
-              )}
+              </div>
+            )}
 
-              <h3
+            <div className="p-3 space-y-2">
+              {/* Line 1: Title and Tags */}
+              <div className="flex items-center gap-2">
+                {/* Status dot indicator - subtle and non-intrusive */}
+                {!isScheduled && !isExpanded && (
+                  <div
+                    className={cn(
+                      "size-2 rounded-full shrink-0 transition-all",
+                      isDeactivated
+                        ? "bg-muted-foreground/40"
+                        : "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+                    )}
+                  />
+                )}
+
+                <h3
+                  className={cn(
+                    "font-bold text-base leading-tight flex-1 tracking-tight",
+                    !isExpanded && "truncate"
+                  )}
+                >
+                  {article.title}
+                </h3>
+
+                {/* Tags */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {article.tags.slice(0, 2).map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="text-[10px] px-1.5 py-0 h-4"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                  {leftoutTags ? (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1.5 py-0 h-4"
+                    >
+                      +{leftoutTags}
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Line 2: Description */}
+              <p
                 className={cn(
-                  "font-bold text-base leading-tight flex-1 tracking-tight",
-                  !isExpanded && "truncate"
+                  "text-sm text-muted-foreground leading-relaxed",
+                  !isExpanded && "line-clamp-1"
                 )}
               >
-                {article.title}
-              </h3>
-
-              {/* Tags */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                {article.tags.slice(0, 2).map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="text-[10px] px-1.5 py-0 h-4"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-                {leftoutTags ? (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] px-1.5 py-0 h-4"
-                  >
-                    +{leftoutTags}
-                  </Badge>
-                ) : null}
-              </div>
+                {article.description}
+              </p>
             </div>
-
-            {/* Line 2: Description */}
-            <p
-              className={cn(
-                "text-sm text-muted-foreground leading-relaxed",
-                !isExpanded && "line-clamp-1"
-              )}
-            >
-              {article.description}
-            </p>
 
             {/* Simple Metrics Row */}
             {!isExpanded && !isDeactivated && !isScheduled && (
-              <div className="flex items-center justify-between pt-2 mt-1 border-t border-border/50">
+              <div className="flex items-center justify-between px-3 pb-3 pt-2 mt-1 border-t border-border/50">
                 {/* Views with sparkline */}
                 <div className="flex items-center gap-2">
                   <Eye

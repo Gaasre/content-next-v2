@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center py-20 px-4">
       {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-[1400px]">
         {/* 2 Column Layout */}
